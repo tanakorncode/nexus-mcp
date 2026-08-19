@@ -1,22 +1,14 @@
 import { Entry } from "@napi-rs/keyring";
 
 export interface TokenSet {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number; // Unix ms
-  userId: string;
-  userEmail: string;
-  userName: string;
+  token: string; // pm_<hex> personal access token from the Developer Portal
+  email: string; // used to resolve "me" against /api/v1/members (no /me endpoint exists)
 }
 
 const SERVICE = "nexus-mcp";
-const ACCOUNT = "active-token-set";
+const ACCOUNT = "pat";
 
-/**
- * Ported from nexus-vscode's TokenManager — same TokenSet shape and refresh
- * semantics, backed by the OS keychain (via @napi-rs/keyring) instead of
- * vscode.SecretStorage so it works outside VS Code, cross-platform.
- */
+/** Stores the Nexus personal access token in the OS keychain, cross-platform via @napi-rs/keyring. */
 export class TokenStore {
   private readonly entry = new Entry(SERVICE, ACCOUNT);
 
@@ -39,9 +31,5 @@ export class TokenStore {
     } catch {
       // nothing stored — fine
     }
-  }
-
-  isExpired(tokens: TokenSet): boolean {
-    return Date.now() >= tokens.expiresAt - 60_000;
   }
 }

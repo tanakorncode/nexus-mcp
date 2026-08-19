@@ -6,9 +6,11 @@ import type { NexusClient, Project } from "../api/NexusClient.js";
 const CACHE_PATH = path.join(os.homedir(), ".nexus-mcp", "project-cache.json");
 
 /**
- * Ported from nexus-vscode's ProjectDetector — same git remote → project
- * matching and branch → task key parsing. Swaps vscode.workspace /
- * workspaceState for a plain cwd argument and a local JSON cache file.
+ * The public /api/v1/* surface has no git-remote → project lookup (that only
+ * exists on the internal /api/nexus/* endpoints reserved for the official
+ * extensions). Instead: read the task key off the current branch name
+ * (e.g. feature/ALPHA-42-fix-login → ALPHA-42), take the prefix before the
+ * dash (ALPHA), and match it against each project's `key`.
  */
 export class ProjectDetector {
   constructor(private readonly client: NexusClient) {}
@@ -17,10 +19,12 @@ export class ProjectDetector {
     const cached = this._getCached(cwd);
     if (cached) return cached;
 
-    const remote = this._resolveGitRemote(cwd);
-    if (!remote) return null;
+    const taskKey = this.resolveCurrentBranchTaskKey(cwd);
+    if (!taskKey) return null;
 
-    const project = await this.client.findProjectByGitRemote(remote);
+    const prefix = taskKey.split("-")[0];
+    const { data: projects } = await this.client.listProjects();
+    const project = projects.find((p) => p.key === prefix) ?? null;
     if (project) this._setCache(cwd, project);
     return project;
   }
@@ -33,43 +37,11 @@ export class ProjectDetector {
       const head = fs.readFileSync(headPath, "utf8").trim();
       const branchMatch = head.match(/^ref: refs\/heads\/(.+)$/);
       if (!branchMatch) return null;
-      return this._parseTaskKeyFromBranch(branchMatch[1]);
+      const match = branchMatch[1].match(/([A-Z]+-\d+)/);
+      return match?.[1] ?? null;
     } catch {
       return null;
     }
-  }
-
-  private _parseTaskKeyFromBranch(branch: string): string | null {
-    const match = branch.match(/([A-Z]+-\d+)/);
-    return match?.[1] ?? null;
-  }
-
-  private _resolveGitRemote(cwd: string): string | null {
-    const configPath = path.join(cwd, ".git", "config");
-    if (!fs.existsSync(configPath)) return null;
-
-    try {
-      const config = fs.readFileSync(configPath, "utf8");
-      return this._parseRemoteUrl(config);
-    } catch {
-      return null;
-    }
-  }
-
-  private _parseRemoteUrl(gitConfig: string): string | null {
-    const match = gitConfig.match(/\[remote\s+"origin"\][^\[]*url\s*=\s*(.+)/);
-    if (!match) return null;
-    return this._normalizeRemoteUrl(match[1].trim());
-  }
-
-  private _normalizeRemoteUrl(raw: string): string {
-    return raw
-      .replace(/^git@/, "")
-      .replace(/^https?:\/\//, "")
-      .replace(/:/, "/")
-      .replace(/\.git$/, "")
-      .toLowerCase()
-      .trim();
   }
 
   // ── Cache ─────────────────────────────────────────────────────────────────

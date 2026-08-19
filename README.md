@@ -1,47 +1,51 @@
 # nexus-mcp
 
-MCP server exposing the Nexus/TaskBridge PM system (epic → story → task) to Claude Code, so agents can read and update tasks directly instead of a human relaying state by hand.
+MCP server exposing the Nexus/TaskBridge PM system's **public `/api/v1/*` API** to Claude Code, so agents can read and update tasks directly instead of a human relaying state by hand.
 
-Ported from [`nexus-vscode`](../nexus-vscode)'s API client and OAuth flow — same auth, same endpoints, same task model. The only things that changed are the two pieces that were VS Code-specific: token storage (now the OS keychain via `@napi-rs/keyring` instead of `vscode.SecretStorage`) and how the login browser tab opens (`open` instead of `vscode.env.openExternal`).
+## Why `/api/v1/*` and not the extension's own endpoints
+
+`nexus-vscode` talks to `/api/auth/nexus/*` and `/api/nexus/*` — endpoints reserved for the official VS Code/IntelliJ extensions (the OAuth `redirect_uri` is validated against `vscode://` or a literal `http://127.0.0.1`, which a standalone tool can't satisfy). The PM system has a separate, actually-third-party-friendly surface for this: a **Developer Portal** (`/developer`) where you register an "app" and mint a personal access token, used against `/api/v1/*`.
+
+Trade-off: `/api/v1/*` only covers tasks / projects / sprints / members. No comments, no epics, no commit-linking — those only exist on the extension-only endpoints. `update_task_status` is still the core hand-off signal, so this doesn't block the main use case, but comment-based hand-off notes aren't possible against this API today.
 
 ## Setup
 
 ```bash
 npm install
-export NEXUS_API_URL=https://<nexus-host>   # same value nexus-vscode points at
-npm run login                                 # opens a browser, stores the token in your OS keychain
+export NEXUS_API_URL=http://27.254.62.17:8090
+npm run login
 ```
 
-Each teammate runs `npm run login` on their own machine with their own Nexus account — tokens never leave the local keychain.
+`login` walks you through generating a token in the Developer Portal, then prompts for it plus your account email (needed because there's no `/me` endpoint — "my tasks" is resolved by matching your email against `/api/v1/members`). The token is stored in your OS keychain via `@napi-rs/keyring`.
+
+Each teammate registers their own app + token in the Developer Portal and runs `npm run login` on their own machine.
 
 ## Register with Claude Code
 
 ```bash
-claude mcp add nexus-mcp -- node /path/to/nexus-mcp/dist/index.js
+npm run build
+claude mcp add nexus-mcp \
+  -e NEXUS_API_URL=http://27.254.62.17:8090 \
+  -- node /path/to/nexus-mcp/dist/index.js
 ```
-
-(run `npm run build` first, or point at `npx tsx src/index.ts` for local dev). Make sure `NEXUS_API_URL` is set in the environment Claude Code launches from.
 
 ## Tools
 
 | Tool | Purpose |
 |---|---|
-| `whoami` | Current authenticated user |
+| `whoami` | Resolve the configured member (by email) |
 | `list_projects` | Projects the user is a member of |
-| `get_current_project` | Auto-detect project from this repo's git remote |
+| `get_current_project` | Auto-detect project from the current branch's task key prefix (e.g. `ALPHA-42` → project key `ALPHA`) |
 | `list_my_tasks` | Tasks assigned to the user (optionally filtered by status) |
-| `get_task` / `get_task_by_key` | Full task detail, by id or by key (e.g. `ALPHA-42`) |
-| `get_current_task` | Resolve task key from the current branch name and fetch its detail |
-| `list_statuses` | Workflow statuses for a project (needed for `update_task_status`) |
+| `get_task` / `get_task_by_key` | Task detail, by id or by key |
+| `get_current_task` | Resolve task key from the current branch and fetch its detail |
+| `list_statuses` | Workflow statuses for a project — exact strings `update_task_status` accepts |
 | `update_task_status` | Move a task to a new status — the hand-off signal |
-| `add_comment` | Log progress or a hand-off note on a task |
-| `list_epics` | Epics for a project |
-| `get_task_commits` | Commits already linked to a task |
+| `list_sprints` | Sprints in a project |
+| `list_members` | Team members sharing a project with the user |
 
-Project id is auto-detected from the current repo's git remote when omitted (same matching logic as `nexus-vscode`'s `ProjectDetector`); pass it explicitly if a repo isn't registered in Nexus yet.
+Project id auto-detects from the current git branch's task-key prefix when omitted (there's no git-remote lookup on the public API, unlike the extension's internal endpoint) — pass it explicitly if that fails.
 
-## Not ported (yet)
+## Not possible against this API
 
-`NexusClient.getActiveSprint` and `NexusClient.linkCommit` are ported but not wired to a tool yet — add one in `src/index.ts` the same way as the existing tools if needed.
-
-`nexus-vscode` also has `createTask`, `logTime`, and AI helpers (`generateCommitMessage`, `chatWithAI`, realtime SSE) that weren't ported into `NexusClient.ts` at all — out of scope for the read/hand-off loop this server is for. Port the method from `nexus-vscode/src/api/NexusClient.ts` first, then wire a tool.
+`add_comment`, `list_epics`, `get_task_commits`, `link_commit` — no `/api/v1/*` route backs any of these; they only exist on the internal `/api/nexus/*` surface reserved for the official extensions. If these matter enough, the fix has to happen on the `pm-system` side (add the routes to `/api/v1/*`), not in this client.

@@ -1,295 +1,230 @@
 import type { TokenStore } from "../auth/TokenStore.js";
-import type { OAuthProvider } from "../auth/OAuthProvider.js";
 
-// ── Domain types (ported from nexus-vscode/src/api/NexusClient.ts) ─────────────
+// ── Domain types — matches pm-system's public /api/v1/* shapes exactly ────────
+// (nested relations, not the flat *_Name strings the internal /api/nexus/*
+// endpoints return — this is a different, public-facing API surface.)
 
-export type TaskStatus = "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE" | "BLOCKED";
-export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "HIGHEST";
+export type Priority = "LOW" | "MEDIUM" | "HIGH" | "HIGHEST";
+
+export interface AssigneeRef {
+  id: string;
+  name: string;
+  avatarColor: string | null;
+}
+
+export interface StatusRef {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface EpicRef {
+  id: string;
+  code: string;
+  name: string;
+  color: string;
+}
+
+export interface SprintRef {
+  id: string;
+  number: number;
+  name: string;
+}
 
 export interface Task {
   id: string;
-  projectId: string | null;
   taskKey: string;
   name: string;
   status: string;
-  statusId: string | null;
-  priority: TaskPriority;
-  assigneeId: string | null;
-  assigneeName: string | null;
-  sprintId: string | null;
-  sprintName: string | null;
-  epicName: string | null;
+  priority: Priority;
+  storyPoints: number;
   dueDate: string | null;
+  description: string | null;
+  projectId: string;
+  createdAt: string;
   updatedAt: string;
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  key: string;
+  assignee: AssigneeRef | null;
+  statusRel: StatusRef | null;
+  epic: EpicRef | null;
+  sprint: SprintRef | null;
+  _count: { subtasks: number; comments: number };
 }
 
 export interface ProjectStatus {
   id: string;
   name: string;
   color: string;
-  order: number;
   isDone: boolean;
+  order: number;
   isDefault: boolean;
 }
 
-export interface TaskDetail extends Task {
-  description: string | null;
-  epicId: string | null;
-  epicColor: string | null;
-  estimatedHours: number | null;
-  storyPoints: number;
-  comments: TaskComment[];
-  commits?: TaskCommit[];
-}
-
-export interface TaskComment {
-  id: string;
-  content: string;
-  authorName: string;
-  createdAt: string;
-}
-
-export interface Epic {
+export interface Project {
   id: string;
   name: string;
-  code: string;
-  color: string;
+  key: string;
+  status?: string;
+  _count: { epics: number; members: number; sprints: number };
+  statuses?: ProjectStatus[];
 }
 
-export interface TaskCommit {
+export interface Member {
   id: string;
-  sha: string | null;
-  fullSha: string | null;
-  message: string | null;
-  branch: string | null;
-  url: string | null;
-  author: string | null;
-  createdAt: string;
+  name: string;
+  displayRole: string | null;
+  avatarColor: string | null;
+  email: string;
 }
+
+export type SprintStatus = "UPCOMING" | "ACTIVE" | "COMPLETED";
 
 export interface Sprint {
   id: string;
+  number: number;
   name: string;
-  status: "PLANNING" | "ACTIVE" | "COMPLETED";
+  status: SprintStatus;
   startDate: string;
   endDate: string;
+}
+
+interface Paged<T> {
+  data: T[];
+  meta: { total: number; page: number; perPage: number };
 }
 
 // ── Client ────────────────────────────────────────────────────────────────────
 
 export class NexusClient {
-  private _refreshPromise: Promise<void> | null = null;
+  private _memberCache: Member[] | null = null;
 
   constructor(
     private readonly tokenStore: TokenStore,
-    private readonly oauthProvider: OAuthProvider,
     private readonly getApiUrl: () => string,
   ) {}
 
-  // ── Core request method ───────────────────────────────────────────────────
-
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const token = await this._getValidToken();
-    const url = `${this.getApiUrl()}${path}`;
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-
-    if (res.status === 401) {
-      await this._forceRefresh();
-      const retryToken = await this._getValidToken();
-      const retryRes = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${retryToken}` },
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-      });
-      if (!retryRes.ok) throw new NexusApiError(retryRes.status, await retryRes.text());
-      return this._parseJson<T>(retryRes);
-    }
-
-    if (!res.ok) throw new NexusApiError(res.status, await res.text());
-    return this._parseJson<T>(res);
-  }
-
-  private async _parseJson<T>(res: Response): Promise<T> {
-    const text = await res.text();
-    if (!text.trim()) throw new NexusApiError(res.status, "Server returned an empty response");
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      throw new NexusApiError(res.status, `Server returned non-JSON: ${text.slice(0, 120)}`);
-    }
-  }
-
-  // ── Token management ──────────────────────────────────────────────────────
-
-  async getAccessToken(): Promise<string | null> {
-    try {
-      return await this._getValidToken();
-    } catch {
-      return null;
-    }
-  }
-
-  private async _getValidToken(): Promise<string> {
     const tokens = await this.tokenStore.get();
     if (!tokens) throw new NotAuthenticatedError();
 
-    if (this.tokenStore.isExpired(tokens)) {
-      await this._forceRefresh();
-      const refreshed = await this.tokenStore.get();
-      if (!refreshed) throw new NotAuthenticatedError();
-      return refreshed.accessToken;
-    }
-
-    return tokens.accessToken;
-  }
-
-  private async _forceRefresh(): Promise<void> {
-    if (this._refreshPromise) return this._refreshPromise;
-
-    this._refreshPromise = (async () => {
-      const tokens = await this.tokenStore.get();
-      if (!tokens) throw new NotAuthenticatedError();
-      const refreshed = await this.oauthProvider.refresh(tokens.refreshToken);
-      await this.tokenStore.store(refreshed);
-    })().finally(() => {
-      this._refreshPromise = null;
+    const res = await fetch(`${this.getApiUrl()}${path}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${tokens.token}`,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
-    return this._refreshPromise;
+    if (res.status === 401) throw new NotAuthenticatedError();
+
+    const text = await res.text();
+    let parsed: unknown = null;
+    if (text.trim()) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        throw new NexusApiError(res.status, `Server returned non-JSON: ${text.slice(0, 120)}`);
+      }
+    }
+
+    if (!res.ok) {
+      const message =
+        parsed && typeof parsed === "object" && "error" in parsed
+          ? JSON.stringify((parsed as { error: unknown }).error)
+          : text;
+      throw new NexusApiError(res.status, message);
+    }
+
+    return parsed as T;
+  }
+
+  private qs(params: Record<string, string | number | undefined>): string {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) search.set(key, String(value));
+    }
+    const s = search.toString();
+    return s ? `?${s}` : "";
   }
 
   // ── Projects ──────────────────────────────────────────────────────────────
 
-  async findProjectByGitRemote(normalizedRemote: string): Promise<Project | null> {
-    const data = await this.request<{ data: Project[] }>(
-      "GET",
-      `/api/nexus/projects?gitRemote=${encodeURIComponent(normalizedRemote)}`,
-    );
-    return data.data[0] ?? null;
+  async listProjects(page?: number, perPage?: number): Promise<Paged<Project>> {
+    return this.request<Paged<Project>>("GET", `/api/v1/projects${this.qs({ page, perPage })}`);
   }
 
-  async listProjects(): Promise<Project[]> {
-    const data = await this.request<{ data: Project[] }>("GET", "/api/nexus/projects");
-    return data.data;
+  async getProject(projectId: string): Promise<Project> {
+    const { data } = await this.request<{ data: Project }>("GET", `/api/v1/projects/${projectId}`);
+    return data;
   }
 
   // ── Tasks ─────────────────────────────────────────────────────────────────
 
-  async getMyTasks(projectId: string, status?: TaskStatus): Promise<Task[]> {
+  async listTasks(params: {
+    projectId?: string;
+    status?: string;
+    assigneeId?: string;
+    page?: number;
+    perPage?: number;
+  }): Promise<Paged<Task>> {
+    return this.request<Paged<Task>>("GET", `/api/v1/tasks${this.qs(params)}`);
+  }
+
+  async getTask(taskId: string): Promise<Task> {
+    const { data } = await this.request<{ data: Task }>("GET", `/api/v1/tasks/${taskId}`);
+    return data;
+  }
+
+  async updateTask(
+    taskId: string,
+    patch: {
+      name?: string;
+      status?: string;
+      priority?: Priority;
+      storyPoints?: number;
+      dueDate?: string | null;
+      assigneeId?: string | null;
+      description?: string | null;
+    },
+  ): Promise<Task> {
+    const { data } = await this.request<{ data: Task }>("PATCH", `/api/v1/tasks/${taskId}`, patch);
+    return data;
+  }
+
+  // ── Sprints ───────────────────────────────────────────────────────────────
+
+  async listSprints(params: {
+    projectId?: string;
+    status?: SprintStatus;
+    page?: number;
+    perPage?: number;
+  }): Promise<Paged<Sprint>> {
+    return this.request<Paged<Sprint>>("GET", `/api/v1/sprints${this.qs(params)}`);
+  }
+
+  // ── Members / identity ───────────────────────────────────────────────────
+  // No /me endpoint exists on the public API — resolve "self" by matching the
+  // email captured at login against /api/v1/members (requires members:read).
+
+  async listMembers(): Promise<Member[]> {
+    if (this._memberCache) return this._memberCache;
+    const { data } = await this.request<{ data: Member[] }>("GET", "/api/v1/members");
+    this._memberCache = data;
+    return data;
+  }
+
+  async getCurrentMember(): Promise<Member> {
     const tokens = await this.tokenStore.get();
     if (!tokens) throw new NotAuthenticatedError();
 
-    let path = `/api/nexus/projects/${projectId}/tasks?assigneeId=${tokens.userId}`;
-    if (status) path += `&status=${status}`;
-
-    const data = await this.request<{ data: Task[] }>("GET", path);
-    return data.data;
-  }
-
-  async getTaskByKey(projectId: string, taskKey: string): Promise<Task | null> {
-    const data = await this.request<{ data: Task[] }>(
-      "GET",
-      `/api/nexus/projects/${projectId}/tasks?taskKey=${encodeURIComponent(taskKey)}`,
-    );
-    return data.data[0] ?? null;
-  }
-
-  async listProjectStatuses(projectId: string): Promise<ProjectStatus[]> {
-    const data = await this.request<{ data: ProjectStatus[] }>(
-      "GET",
-      `/api/nexus/projects/${projectId}/statuses`,
-    );
-    return data.data;
-  }
-
-  async updateTaskStatus(taskId: string, statusId: string): Promise<Task> {
-    const data = await this.request<{ data: Task }>(
-      "PATCH",
-      `/api/nexus/tasks/${taskId}/status`,
-      { statusId },
-    );
-    return data.data;
-  }
-
-  // ── Task details / comments ───────────────────────────────────────────────
-
-  async getTask(taskId: string): Promise<TaskDetail> {
-    const data = await this.request<{ data: TaskDetail }>("GET", `/api/nexus/tasks/${taskId}`);
-    return data.data;
-  }
-
-  async addComment(taskId: string, content: string): Promise<TaskComment> {
-    const data = await this.request<{ data: TaskComment }>(
-      "POST",
-      `/api/nexus/tasks/${taskId}/comments`,
-      { content },
-    );
-    return data.data;
-  }
-
-  async listEpics(projectId: string): Promise<Epic[]> {
-    const data = await this.request<{ data: Epic[] }>("GET", `/api/nexus/projects/${projectId}/epics`);
-    return data.data;
-  }
-
-  async getTaskCommits(taskId: string): Promise<TaskCommit[]> {
-    try {
-      const data = await this.request<{ data: TaskCommit[] }>(
-        "GET",
-        `/api/nexus/tasks/${taskId}/commits`,
+    const members = await this.listMembers();
+    const me = members.find((m) => m.email.toLowerCase() === tokens.email.toLowerCase());
+    if (!me) {
+      throw new Error(
+        `No member found with email ${tokens.email} — check the email you entered during login.`,
       );
-      return data.data;
-    } catch {
-      return [];
     }
-  }
-
-  async linkCommit(
-    taskId: string,
-    commitSha: string,
-    commitMessage: string,
-    branch: string,
-    repoUrl: string,
-  ): Promise<void> {
-    await this.request("POST", "/api/nexus/git/link-commit", {
-      taskId,
-      commitSha,
-      commitMessage,
-      branch,
-      repoUrl,
-    });
-  }
-
-  async getActiveSprint(projectId: string): Promise<Sprint | null> {
-    const data = await this.request<{ data: Sprint[] }>(
-      "GET",
-      `/api/nexus/projects/${projectId}/sprints?status=ACTIVE`,
-    );
-    return data.data[0] ?? null;
-  }
-
-  // ── Auth helpers ──────────────────────────────────────────────────────────
-
-  async isAuthenticated(): Promise<boolean> {
-    const tokens = await this.tokenStore.get();
-    return tokens !== null;
-  }
-
-  async getCurrentUser(): Promise<{ id: string; email: string; name: string } | null> {
-    const tokens = await this.tokenStore.get();
-    if (!tokens) return null;
-    return { id: tokens.userId, email: tokens.userEmail, name: tokens.userName };
+    return me;
   }
 }
 
@@ -307,7 +242,7 @@ export class NexusApiError extends Error {
 
 export class NotAuthenticatedError extends Error {
   constructor() {
-    super("Not authenticated — run `npm run login` first");
+    super("Not authenticated, or token expired/revoked — run `npm run login` again");
     this.name = "NotAuthenticatedError";
   }
 }
