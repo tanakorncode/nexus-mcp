@@ -1,0 +1,27 @@
+{
+  "name": "nexus-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing the Nexus/TaskBridge PM system to Claude Code — ported from nexus-vscode's API client and auth flow",
+  "type": "module",
+  "bin": {
+    "nexus-mcp": "./dist/index.js",
+    "nexus-mcp-login": "./dist/cli/login.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "login": "tsx src/cli/login.ts",
+    "logout": "tsx src/cli/logout.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@napi-rs/keyring": "^1.1.4",
+    "open": "^10.1.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
