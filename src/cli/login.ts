@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import * as readline from "readline/promises";
 import { TokenStore } from "../auth/TokenStore.js";
 
