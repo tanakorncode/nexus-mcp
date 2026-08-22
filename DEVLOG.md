@@ -31,3 +31,15 @@
 1. Multi-repo/global registration — right now `.mcp.json` only makes `nexus-mcp` visible inside `pea-thailand-backoffice-be`. Either install the real `claude` CLI (`npm install -g @anthropic-ai/claude-code`) and use `claude mcp add --scope user`, or copy `.mcp.json` into each repo that needs it. Not resolved yet — didn't want to guess the user-scope file format without the CLI to verify it.
 2. Other teammates still need to do their own `npm run login` (own app + token in the Developer Portal, own email) — nothing here is shared automatically, this was only verified for one account so far.
 3. Optional, only if `add_comment`/`list_epics` end up mattering: would require adding those routes to `pm-system`'s `/api/v1/*` — out of scope for this repo.
+
+## 2026-08-22 — found + fixed a real gap: PATCH status didn't set statusId/completedAt
+
+`update_task_status` was writing only the raw `status` string column. Compared PEA-T002 (set via nexus-mcp) against PEA-T001 (a pre-existing real "Done" task) and found `statusId` and `completedAt` stayed `null` on the nexus-mcp one — `/api/v1/tasks/[id]` PATCH (`pm-system/src/app/api/v1/tasks/[id]/route.ts`) never touched those fields no matter what the client sent, confirmed by reading the route source directly (not guessed).
+
+**Fix (in `pm-system`, not this repo):** PATCH now resolves `body.status` against the project's real `ProjectStatus` (unique on `[projectId, name]`) and, when matched, sets `statusId` + `completedAt` (`isDone ? now : null`) alongside the label. Falls back to the old raw-string behavior if the name doesn't match any real status, so nothing existing breaks.
+
+**Verified two ways:**
+- Against the live server (`27.254.62.17:8090`) before the fix — confirmed the bug (`statusId`/`completedAt` stayed null after PATCH).
+- Against `pm-system`'s own dev server (`localhost:3000`, same database — found it already running, `next dev --turbopack` hot-reloads route changes) after the fix — `statusId`, `statusRel`, and `completedAt` all populated correctly on PEA-T002, matching PEA-T001's shape exactly.
+
+Confirms `nexus-mcp`'s client code was already sending the right thing (`status` as a plain name string) — the gap was entirely server-side. `NEXUS_API_URL` in `pea-thailand-backoffice-be/.mcp.json` was pointed at `localhost:3000` for this test — **still needs pointing back at the real server once the fix is actually deployed there**, and the fix itself is only live on the local dev server's in-memory process right now, not on `27.254.62.17:8090`. `pm-system`'s git remote is broken (`repository not found`) and there's no known deploy pipeline yet — real deployment is still unresolved.
