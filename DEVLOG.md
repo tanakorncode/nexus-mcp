@@ -42,4 +42,14 @@
 - Against the live server (`27.254.62.17:8090`) before the fix — confirmed the bug (`statusId`/`completedAt` stayed null after PATCH).
 - Against `pm-system`'s own dev server (`localhost:3000`, same database — found it already running, `next dev --turbopack` hot-reloads route changes) after the fix — `statusId`, `statusRel`, and `completedAt` all populated correctly on PEA-T002, matching PEA-T001's shape exactly.
 
-Confirms `nexus-mcp`'s client code was already sending the right thing (`status` as a plain name string) — the gap was entirely server-side. `NEXUS_API_URL` in `pea-thailand-backoffice-be/.mcp.json` was pointed at `localhost:3000` for this test — **still needs pointing back at the real server once the fix is actually deployed there**, and the fix itself is only live on the local dev server's in-memory process right now, not on `27.254.62.17:8090`. `pm-system`'s git remote is broken (`repository not found`) and there's no known deploy pipeline yet — real deployment is still unresolved.
+Confirms `nexus-mcp`'s client code was already sending the right thing (`status` as a plain name string) — the gap was entirely server-side. `NEXUS_API_URL` in `pea-thailand-backoffice-be/.mcp.json` was pointed at `localhost:3000` for this test, then switched back to the real server (`27.254.62.17:8090`) afterward — but the *fix itself* is still only live on the local dev server's in-memory process, not on `27.254.62.17:8090`. `pm-system`'s git remote is broken (`repository not found`) and there's no known deploy pipeline yet — real deployment is still unresolved.
+
+## 2026-08-22 — npm link for a portable install, found + fixed a missing shebang
+
+Working out how teammates would install this without hardcoding a path tied to one person's home directory. `npm link` (or `npm install -g .`) makes the `bin` entries in `package.json` (`nexus-mcp`, `nexus-mcp-login`) resolve on `PATH` — so `.mcp.json` can say `"command": "nexus-mcp"` with no path at all, portable across machines, safe to commit and share via git.
+
+**Bug found while testing this:** `dist/index.js` had no `#!/usr/bin/env node` shebang. Running it via `node dist/index.js` (what `.mcp.json` was doing before) worked fine, but invoking the linked `nexus-mcp` command directly did not — the shell fell through to interpreting the first source line as a command, and that line started with the word `import` (an ES module import statement), which happened to resolve to **ImageMagick's `import` binary** on this machine instead of failing with a clear error. Silent, confusing failure mode.
+
+**Fix:** added `#!/usr/bin/env node` as the first line of `src/index.ts` and `src/cli/login.ts` — `tsc` preserves a shebang comment verbatim at the top of a file, so it survives into `dist/*.js`. Verified `nexus-mcp` runs clean via the linked PATH command afterward (no ImageMagick output, clean exit).
+
+`pea-thailand-backoffice-be/.mcp.json` now: `"command": "nexus-mcp", "args": []`, no path, `NEXUS_API_URL` pointed at the real server. Still needs `nexus-mcp` itself pushed to a git remote before this is actually shareable — right now it only exists as local commits on this machine.
