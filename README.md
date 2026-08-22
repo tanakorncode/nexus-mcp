@@ -6,19 +6,13 @@ Talks to the PM system's public `/api/v1/*` API — not `nexus-vscode`'s interna
 
 ## Setup (one time, per person)
 
-```bash
-git clone https://github.com/tanakorncode/nexus-mcp
-cd nexus-mcp
-npm install
-npm run build
-npm link          # makes the `nexus-mcp` command available anywhere on this machine
-```
+No clone needed — `npx` fetches, builds, and runs straight from GitHub.
 
-Generate your own access token, then log in:
+Generate your own access token, then log in (this prompts you for the token):
 
 ```bash
 export NEXUS_API_URL=http://27.254.62.17:8090
-npm run login
+npx -y -p github:tanakorncode/nexus-mcp nexus-mcp-login
 ```
 
 This walks you through the Developer Portal (`$NEXUS_API_URL/developer` → create an app → grant scopes `tasks:read tasks:write projects:read members:read sprints:read` → generate a token), then prompts for that token plus your account email. The token is stored in your OS keychain (`@napi-rs/keyring` — works on macOS/Windows/Linux), never in a file.
@@ -27,8 +21,9 @@ This walks you through the Developer Portal (`$NEXUS_API_URL/developer` → crea
 
 ```bash
 mkdir -p ~/.claude/skills
-cp -r ~/development/pea/claude-templates/skills/nexus-pick-up-task ~/.claude/skills/
-cp -r ~/development/pea/claude-templates/skills/nexus-plan-work ~/.claude/skills/
+git clone --depth 1 https://github.com/tanakorncode/claude-templates /tmp/claude-templates
+cp -r /tmp/claude-templates/skills/nexus-pick-up-task ~/.claude/skills/
+cp -r /tmp/claude-templates/skills/nexus-plan-work ~/.claude/skills/
 ```
 
 **Register with Claude Code** — add to the repo(s) you'll work in, as `.mcp.json` at the repo root:
@@ -38,8 +33,8 @@ cp -r ~/development/pea/claude-templates/skills/nexus-plan-work ~/.claude/skills
   "mcpServers": {
     "nexus-mcp": {
       "type": "stdio",
-      "command": "nexus-mcp",
-      "args": [],
+      "command": "npx",
+      "args": ["-y", "github:tanakorncode/nexus-mcp"],
       "env": { "NEXUS_API_URL": "http://27.254.62.17:8090" }
     }
   }
@@ -47,6 +42,22 @@ cp -r ~/development/pea/claude-templates/skills/nexus-plan-work ~/.claude/skills
 ```
 
 Reload the Claude Code window and approve the trust prompt. Verify with `whoami`.
+
+First run is slower (`npx` fetches + builds fresh); it caches after that.
+
+### Developing on nexus-mcp itself
+
+If you're changing this repo's own code, not just using it, clone it instead so edits take effect without re-publishing:
+
+```bash
+git clone https://github.com/tanakorncode/nexus-mcp
+cd nexus-mcp
+npm install
+npm run build
+npm link          # makes the `nexus-mcp` command available anywhere on this machine
+```
+
+Point `.mcp.json` at `"command": "nexus-mcp"` (no `args`) instead of the `npx` form while iterating — rebuild (`npm run build`) and reload the Claude Code window to pick up changes; the MCP server process holds old code in memory otherwise.
 
 ## The two skills, and when each applies
 
@@ -81,8 +92,9 @@ Read the skill files themselves for the full step-by-step — this README won't 
 | `list_epics` | Epics in a project |
 | `list_stories` | Stories under an epic — check before creating a duplicate |
 | `create_story` | New story under an epic |
-| `create_task` | New task — `epicId` required; set `storyId`/`repositoryId`/`blockedById` at creation if known |
-| `update_task_links` | Set or clear `storyId`/`repositoryId`/`blockedById` on an existing task (pass `null` to unset) |
+| `list_labels` / `create_label` | Labels in a project / create a new one |
+| `create_task` | New task — `epicId` required; set `storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` at creation if known |
+| `update_task` | Change `storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` on an existing task (`null` unsets a field; `labelIds` is a full replace, not a diff) |
 
 **Hand-off**
 | Tool | Purpose |
@@ -109,4 +121,4 @@ This only checks; a person still has to open Claude Code and say "go" once notif
 - No comment support, no commit-linking — those routes only exist on the extension-only internal API, not `/api/v1/*`. Would need new `pm-system` routes to add.
 - No epic creation via API — epics are infrequent/lead-planned; use the product UI.
 - No attachment/embed *upload* via API (reading them works — `get_task` returns both) — attach Figma links/screenshots through the product UI.
-- Repo-scoped and story-scoped queries only return results once someone actually sets `repositoryId`/`storyId` on tasks — nothing is inferred automatically.
+- Repo-scoped, story-scoped, and label-filtered queries only return results once someone actually sets `repositoryId`/`storyId`/`labelIds` on tasks — nothing is inferred automatically.
