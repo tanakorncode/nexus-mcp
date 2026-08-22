@@ -53,3 +53,30 @@ Working out how teammates would install this without hardcoding a path tied to o
 **Fix:** added `#!/usr/bin/env node` as the first line of `src/index.ts` and `src/cli/login.ts` — `tsc` preserves a shebang comment verbatim at the top of a file, so it survives into `dist/*.js`. Verified `nexus-mcp` runs clean via the linked PATH command afterward (no ImageMagick output, clean exit).
 
 `pea-thailand-backoffice-be/.mcp.json` now: `"command": "nexus-mcp", "args": []`, no path, `NEXUS_API_URL` pointed at the real server. Still needs `nexus-mcp` itself pushed to a git remote before this is actually shareable — right now it only exists as local commits on this machine.
+
+Pushed to `https://github.com/tanakorncode/nexus-mcp` shortly after (separate from this note — see commit history).
+
+## 2026-08-22 (later) — repo-scoped tasks, story grouping, task dependencies
+
+The real question this was for: one Nexus project covers multiple actual repos (frontend, backend, ...) — how does an agent sitting in one specific repo know which tasks are "its" tasks, and how does it know backend-before-frontend ordering? Checked the schema directly instead of guessing (`pm-system/prisma/schema.prisma`) and found three mechanisms already modeled, none of them exposed through `/api/v1/*` yet:
+
+- **`GitRepository`** — a project can register multiple repos, each with its own `repoUrl`. `Task.repositoryId` links a task to one specific repo. This is the actual designed-for answer to "which task is for this repo."
+- **`Story`** — groups tasks under one epic; sibling tasks sharing a `storyId` are the natural "one feature, one task per repo" unit. Already had real data to confirm this pattern (PEA-T048/T049/T050 share a `storyId`).
+- **`Task.blockedById`** (+ reverse `blocks`) — literal single-predecessor dependency field, exactly the "do X before Y" signal. Confirmed via a schema comment that this is the one actually used by the product's task-detail/badges/backlog UI, not the richer `TaskDependency` table (that one's additive, for the Gantt view's multi-dependency FS/SS/FF/SF needs — out of scope here).
+
+**Backend changes (`pm-system`):**
+- `GET /api/v1/tasks` and `GET /api/v1/tasks/:id` — added `story`, `repository`, `blockedBy`, `blocks` to the Prisma include (were being silently dropped before, client had no way to see them even though the columns existed).
+- `GET /api/v1/tasks` — added `storyId` and `repositoryId` query filters (mirrors the existing `status`/`assigneeId` pattern).
+- New route `GET /api/v1/repositories?projectId=&repoUrl=` — lists registered repos for a project. Gated by `projects:read` (didn't add a new scope — a GitRepository is project config, not a separate resource, and adding a new scope would've orphaned every already-issued token). Selects only safe fields — excludes `webhookSecret`, `aiReviewApiKey`.
+- Typechecks clean (`tsc --noEmit`, exit 0, both times).
+
+**Reality check before building the client side:** queried the live DB directly (`prisma.gitRepository.findMany()`) — **zero `GitRepository` rows exist for the PEA project.** The mechanism is real but nothing's registered yet. Didn't fabricate a repo record myself (that's real project config, not something to guess at from an agent) — the matching logic is built and will start working the moment someone registers this repo through the product's own UI.
+
+**Client changes (`nexus-mcp`):**
+- `Task` type extended: `storyId`/`story`, `repositoryId`/`repository`, `blockedById`/`blockedBy`/`blocks`.
+- New `GitRepository` type + `listRepositories()`.
+- `ProjectDetector` rewritten — now tries git-remote → `GitRepository` matching first (exact repo, not just project), falls back to the existing branch-task-key-prefix heuristic if the repo isn't registered. Cache now stores `{project, repository}` together.
+- New tools: `get_current_repository` (explicit "not registered yet" result, not an error — that's a normal state), `list_story_tasks` (siblings by story — usable today, no backend gap). `list_my_tasks` gained an optional `repositoryId` param.
+- Typechecks clean, rebuilt.
+
+**Not done:** end-to-end test against real data — blocked on nothing existing to match against yet (no repos, no story-linked tasks in active use, no blockedBy links set by anyone). `list_story_tasks` is the one piece with real data behind it (PEA-T048/049/050) and should be testable now. `blockedById`-based sequencing depends entirely on PM/BA actually setting it when planning work — the tooling can only surface it, not invent it.

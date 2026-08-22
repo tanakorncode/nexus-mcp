@@ -31,6 +31,25 @@ export interface SprintRef {
   name: string;
 }
 
+export interface StoryRef {
+  id: string;
+  name: string;
+}
+
+export interface RepositoryRef {
+  id: string;
+  name: string;
+  repoUrl: string;
+  keyPrefix: string;
+}
+
+export interface TaskDepRef {
+  id: string;
+  taskKey: string | null;
+  name: string;
+  status: string;
+}
+
 export interface Task {
   id: string;
   taskKey: string;
@@ -41,12 +60,21 @@ export interface Task {
   dueDate: string | null;
   description: string | null;
   projectId: string;
+  storyId: string | null;
+  repositoryId: string | null;
+  blockedById: string | null;
   createdAt: string;
   updatedAt: string;
   assignee: AssigneeRef | null;
   statusRel: StatusRef | null;
   epic: EpicRef | null;
   sprint: SprintRef | null;
+  story: StoryRef | null;
+  repository: RepositoryRef | null;
+  /** The task that must finish first — this task can't start/land until it does. */
+  blockedBy: TaskDepRef | null;
+  /** Tasks waiting on this one — the other side of the hand-off. */
+  blocks: TaskDepRef[];
   _count: { subtasks: number; comments: number };
 }
 
@@ -85,6 +113,17 @@ export interface Sprint {
   status: SprintStatus;
   startDate: string;
   endDate: string;
+}
+
+export interface GitRepository {
+  id: string;
+  projectId: string;
+  name: string;
+  keyPrefix: string;
+  repoUrl: string;
+  repoNamespace: string;
+  provider: string;
+  active: boolean;
 }
 
 interface Paged<T> {
@@ -164,6 +203,8 @@ export class NexusClient {
     projectId?: string;
     status?: string;
     assigneeId?: string;
+    storyId?: string;
+    repositoryId?: string;
     page?: number;
     perPage?: number;
   }): Promise<Paged<Task>> {
@@ -200,6 +241,16 @@ export class NexusClient {
     perPage?: number;
   }): Promise<Paged<Sprint>> {
     return this.request<Paged<Sprint>>("GET", `/api/v1/sprints${this.qs(params)}`);
+  }
+
+  // ── Repositories ──────────────────────────────────────────────────────────
+
+  async listRepositories(params: { projectId?: string; repoUrl?: string } = {}): Promise<GitRepository[]> {
+    const { data } = await this.request<{ data: GitRepository[] }>(
+      "GET",
+      `/api/v1/repositories${this.qs(params)}`,
+    );
+    return data;
   }
 
   // ── Members / identity ───────────────────────────────────────────────────
