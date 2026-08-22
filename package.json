@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "dev": "tsx src/index.ts",
     "login": "tsx src/cli/login.ts",
     "logout": "tsx src/cli/logout.ts"
