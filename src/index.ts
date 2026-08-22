@@ -184,6 +184,97 @@ server.tool(
 );
 
 server.tool(
+  "list_epics",
+  "List epics in a project — the top level of the hierarchy, needed to create a task or story. Auto-detects the project if omitted.",
+  { projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo.") },
+  async ({ projectId }) => {
+    try {
+      const id = await resolveProjectId(projectId);
+      return textResult(await client.listEpics(id));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "list_stories",
+  "List stories under an epic — check this before creating a new story, in case one already exists for the feature you're about to add a task to.",
+  { epicId: z.string() },
+  async ({ epicId }) => {
+    try {
+      return textResult(await client.listStories(epicId));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "create_story",
+  "Create a story under an epic — the grouping unit for a feature that spans multiple repos. Convention: one story per feature, one task per repo underneath it (check list_story_tasks/list_stories first to avoid creating a duplicate for a feature that already has one).",
+  {
+    epicId: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    priority: z.enum(["LOW", "MEDIUM", "HIGH", "HIGHEST"]).optional(),
+    storyPoints: z.number().optional(),
+  },
+  async ({ epicId, name, description, priority, storyPoints }) => {
+    try {
+      return textResult(await client.createStory({ epicId, name, description, priority, storyPoints }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "create_task",
+  "Create a task. epicId is required by the API — use list_epics to find it. To make the task properly discoverable, also set storyId (if it's part of a multi-repo feature — see list_stories/create_story), repositoryId (see get_current_repository — which repo this task is actually for), and blockedById (if it can't start until another task finishes). A task with none of these set is still valid but won't show up in repo-scoped or story-grouped queries later.",
+  {
+    name: z.string(),
+    epicId: z.string(),
+    projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo."),
+    description: z.string().optional(),
+    priority: z.enum(["LOW", "MEDIUM", "HIGH", "HIGHEST"]).optional(),
+    status: z.string().optional().describe("Status name (use list_statuses). Omit for the project's default."),
+    storyPoints: z.number().optional(),
+    dueDate: z.string().optional().describe("ISO date string."),
+    assigneeId: z.string().optional(),
+    storyId: z.string().optional().describe("Group this task with its siblings across repos — see list_stories/create_story."),
+    repositoryId: z.string().optional().describe("Which repo this task is for — see get_current_repository."),
+    blockedById: z.string().optional().describe("A task that must finish first."),
+  },
+  async ({ projectId, ...rest }) => {
+    try {
+      const id = await resolveProjectId(projectId);
+      return textResult(await client.createTask({ projectId: id, ...rest }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "update_task_links",
+  "Set or clear a task's story/repository/blocked-by relationships after creation — pass null for any field to unset it, omit fields you don't want to change.",
+  {
+    taskId: z.string(),
+    storyId: z.string().nullable().optional(),
+    repositoryId: z.string().nullable().optional(),
+    blockedById: z.string().nullable().optional(),
+  },
+  async ({ taskId, storyId, repositoryId, blockedById }) => {
+    try {
+      return textResult(await client.updateTask(taskId, { storyId, repositoryId, blockedById }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
   "list_statuses",
   "List the workflow statuses available in a project — the exact `status` strings update_task_status accepts.",
   { projectId: z.string().optional() },

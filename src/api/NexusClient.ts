@@ -118,6 +118,30 @@ export interface Project {
   statuses?: ProjectStatus[];
 }
 
+export interface Epic {
+  id: string;
+  projectId: string | null;
+  code: string;
+  name: string;
+  description: string | null;
+  priority: Priority;
+  status: string;
+  color: string;
+  order: number;
+}
+
+export interface Story {
+  id: string;
+  epicId: string;
+  sprintId: string | null;
+  name: string;
+  description: string | null;
+  priority: Priority;
+  status: string;
+  storyPoints: number;
+  order: number;
+}
+
 export interface Member {
   id: string;
   name: string;
@@ -248,9 +272,53 @@ export class NexusClient {
       dueDate?: string | null;
       assigneeId?: string | null;
       description?: string | null;
+      storyId?: string | null;
+      repositoryId?: string | null;
+      blockedById?: string | null;
     },
   ): Promise<Task> {
     const { data } = await this.request<{ data: Task }>("PATCH", `/api/v1/tasks/${taskId}`, patch);
+    return data;
+  }
+
+  async createTask(input: {
+    name: string;
+    projectId: string;
+    epicId: string;
+    status?: string;
+    priority?: Priority;
+    storyPoints?: number;
+    dueDate?: string;
+    assigneeId?: string;
+    description?: string;
+    storyId?: string;
+    repositoryId?: string;
+    blockedById?: string;
+  }): Promise<Task> {
+    const { data } = await this.request<{ data: Task }>("POST", "/api/v1/tasks", input);
+    return data;
+  }
+
+  // ── Epics / Stories ───────────────────────────────────────────────────────
+
+  async listEpics(projectId?: string): Promise<Epic[]> {
+    const { data } = await this.request<{ data: Epic[] }>("GET", `/api/v1/epics${this.qs({ projectId })}`);
+    return data;
+  }
+
+  async listStories(epicId: string): Promise<Story[]> {
+    const { data } = await this.request<{ data: Story[] }>("GET", `/api/v1/stories${this.qs({ epicId })}`);
+    return data;
+  }
+
+  async createStory(input: {
+    epicId: string;
+    name: string;
+    description?: string;
+    priority?: Priority;
+    storyPoints?: number;
+  }): Promise<Story> {
+    const { data } = await this.request<{ data: Story }>("POST", "/api/v1/stories", input);
     return data;
   }
 
