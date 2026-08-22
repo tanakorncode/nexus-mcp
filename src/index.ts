@@ -230,8 +230,40 @@ server.tool(
 );
 
 server.tool(
+  "list_labels",
+  "List labels defined in a project. Check before create_label, to avoid creating a duplicate.",
+  { projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo.") },
+  async ({ projectId }) => {
+    try {
+      const id = await resolveProjectId(projectId);
+      return textResult(await client.listLabels(id));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "create_label",
+  "Create a new label in a project — check list_labels first, this errors if the name already exists.",
+  {
+    projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo."),
+    name: z.string(),
+    color: z.string().optional().describe("Hex color, e.g. '#3b82f6'. Omit for the project's default."),
+  },
+  async ({ projectId, name, color }) => {
+    try {
+      const id = await resolveProjectId(projectId);
+      return textResult(await client.createLabel({ projectId: id, name, color }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
   "create_task",
-  "Create a task. epicId is required by the API — use list_epics to find it. To make the task properly discoverable, also set storyId (if it's part of a multi-repo feature — see list_stories/create_story), repositoryId (see get_current_repository — which repo this task is actually for), and blockedById (if it can't start until another task finishes). A task with none of these set is still valid but won't show up in repo-scoped or story-grouped queries later.",
+  "Create a task. epicId is required by the API — use list_epics to find it. Optional fields that make the task properly discoverable later: storyId (multi-repo feature grouping — see list_stories/create_story), repositoryId (see get_current_repository), blockedById (a task that must finish first), assigneeId (see list_members), labelIds (see list_labels/create_label). See the nexus-plan-work skill for the recommended process around which of these to ask about before calling this.",
   {
     name: z.string(),
     epicId: z.string(),
@@ -241,10 +273,11 @@ server.tool(
     status: z.string().optional().describe("Status name (use list_statuses). Omit for the project's default."),
     storyPoints: z.number().optional(),
     dueDate: z.string().optional().describe("ISO date string."),
-    assigneeId: z.string().optional(),
+    assigneeId: z.string().optional().describe("See list_members."),
     storyId: z.string().optional().describe("Group this task with its siblings across repos — see list_stories/create_story."),
     repositoryId: z.string().optional().describe("Which repo this task is for — see get_current_repository."),
     blockedById: z.string().optional().describe("A task that must finish first."),
+    labelIds: z.array(z.string()).optional().describe("See list_labels/create_label."),
   },
   async ({ projectId, ...rest }) => {
     try {
@@ -257,17 +290,19 @@ server.tool(
 );
 
 server.tool(
-  "update_task_links",
-  "Set or clear a task's story/repository/blocked-by relationships after creation — pass null for any field to unset it, omit fields you don't want to change.",
+  "update_task",
+  "Set or clear a task's story/repository/blocked-by/assignee/labels after creation. Pass null for storyId/repositoryId/blockedById/assigneeId to unset one, omit fields you don't want to change. labelIds is a full replace, not a diff — pass the complete set of label ids the task should end up with (use list_labels to see ids, get_task to see the task's current labelIds via taskLabels).",
   {
     taskId: z.string(),
     storyId: z.string().nullable().optional(),
     repositoryId: z.string().nullable().optional(),
     blockedById: z.string().nullable().optional(),
+    assigneeId: z.string().nullable().optional().describe("See list_members."),
+    labelIds: z.array(z.string()).optional().describe("Full replacement set — see list_labels."),
   },
-  async ({ taskId, storyId, repositoryId, blockedById }) => {
+  async ({ taskId, storyId, repositoryId, blockedById, assigneeId, labelIds }) => {
     try {
-      return textResult(await client.updateTask(taskId, { storyId, repositoryId, blockedById }));
+      return textResult(await client.updateTask(taskId, { storyId, repositoryId, blockedById, assigneeId, labelIds }));
     } catch (err) {
       return errorResult(err);
     }

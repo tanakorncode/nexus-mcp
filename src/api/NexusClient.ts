@@ -68,6 +68,12 @@ export interface EmbedRef {
   provider: string;
 }
 
+export interface LabelRef {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface Task {
   id: string;
   taskKey: string;
@@ -97,6 +103,7 @@ export interface Task {
   attachments: AttachmentRef[];
   /** Unfurled links — Figma files, docs, etc. */
   embeds: EmbedRef[];
+  taskLabels: Array<{ label: LabelRef }>;
   _count: { subtasks: number; comments: number };
 }
 
@@ -275,6 +282,7 @@ export class NexusClient {
       storyId?: string | null;
       repositoryId?: string | null;
       blockedById?: string | null;
+      labelIds?: string[];
     },
   ): Promise<Task> {
     const { data } = await this.request<{ data: Task }>("PATCH", `/api/v1/tasks/${taskId}`, patch);
@@ -294,6 +302,7 @@ export class NexusClient {
     storyId?: string;
     repositoryId?: string;
     blockedById?: string;
+    labelIds?: string[];
   }): Promise<Task> {
     const { data } = await this.request<{ data: Task }>("POST", "/api/v1/tasks", input);
     return data;
@@ -319,6 +328,18 @@ export class NexusClient {
     storyPoints?: number;
   }): Promise<Story> {
     const { data } = await this.request<{ data: Story }>("POST", "/api/v1/stories", input);
+    return data;
+  }
+
+  // ── Labels ────────────────────────────────────────────────────────────────
+
+  async listLabels(projectId: string): Promise<LabelRef[]> {
+    const { data } = await this.request<{ data: LabelRef[] }>("GET", `/api/v1/labels${this.qs({ projectId })}`);
+    return data;
+  }
+
+  async createLabel(input: { projectId: string; name: string; color?: string }): Promise<LabelRef> {
+    const { data } = await this.request<{ data: LabelRef }>("POST", "/api/v1/labels", input);
     return data;
   }
 
