@@ -6,18 +6,34 @@ Talks to the PM system's public `/api/v1/*` API — not `nexus-vscode`'s interna
 
 ## Setup (one time, per person)
 
-No clone needed — `npx` fetches, builds, and runs straight from GitHub.
+Four steps, in order — **logging in does not, by itself, make Claude Code aware nexus-mcp exists.** That's a separate step (2 below). No `git clone` needed anywhere in this list — `npx` fetches, builds, and runs straight from GitHub.
 
-Generate your own access token, then log in (this prompts you for the token):
+**1. Log in** — generates a token via the Developer Portal and stores it in your OS keychain (`@napi-rs/keyring` — never in a file):
 
 ```bash
 export NEXUS_API_URL=http://27.254.62.17:8090
 npx -y -p github:tanakorncode/nexus-mcp nexus-mcp-login
 ```
 
-This walks you through the Developer Portal (`$NEXUS_API_URL/developer` → create an app → grant scopes `tasks:read tasks:write projects:read members:read sprints:read` → generate a token), then prompts for that token plus your account email. The token is stored in your OS keychain (`@napi-rs/keyring` — works on macOS/Windows/Linux), never in a file.
+Walks you through `$NEXUS_API_URL/developer` → create an app → grant scopes `tasks:read tasks:write projects:read members:read sprints:read` → generate a token — then prompts you to paste that token plus your account email.
 
-**Install the skills** (once per person — see `claude-templates/README.md` for details):
+**2. Register with Claude Code** — pick one (not both needed, but they can coexist):
+
+- **For yourself, every repo, one time** (needs the `claude` CLI — `npm install -g @anthropic-ai/claude-code` first):
+
+  ```bash
+  claude mcp add nexus-mcp -s user -e NEXUS_API_URL=http://27.254.62.17:8090 -- npx -y github:tanakorncode/nexus-mcp
+  ```
+
+  No `.mcp.json` needed anywhere after this.
+
+- **Or**, if a repo you're opening already has `.mcp.json` committed at its root (e.g. `pea-thailand-backoffice-be`) — nothing to do, Claude Code picks it up on its own when you open that repo. Only relevant if you *didn't* do the step above.
+
+**3. Reload Claude Code** (new window / restart the session) — required either way, the running session doesn't pick up a newly-registered server on its own. First connection is slower (`npx` fetches + builds fresh); cached after that. Approve the one-time trust prompt.
+
+**4. Verify** — ask Claude to call `whoami`. If it resolves your name, all four steps worked.
+
+**Install the skills too** (once per person — see `claude-templates/README.md` for details):
 
 ```bash
 mkdir -p ~/.claude/skills
@@ -25,35 +41,6 @@ git clone --depth 1 https://github.com/tanakorncode/claude-templates /tmp/claude
 cp -r /tmp/claude-templates/skills/nexus-pick-up-task ~/.claude/skills/
 cp -r /tmp/claude-templates/skills/nexus-plan-work ~/.claude/skills/
 ```
-
-**Register with Claude Code** — two ways, not mutually exclusive:
-
-*Option A — for yourself, every repo, one time* (needs the `claude` CLI: `npm install -g @anthropic-ai/claude-code`):
-
-```bash
-claude mcp add nexus-mcp -s user -e NEXUS_API_URL=http://27.254.62.17:8090 -- npx -y github:tanakorncode/nexus-mcp
-```
-
-No `.mcp.json` needed anywhere after this — it applies across every repo you open on this machine.
-
-*Option B — commit `.mcp.json` to a specific repo*, so anyone who clones it gets `nexus-mcp` automatically even without Option A set up:
-
-```json
-{
-  "mcpServers": {
-    "nexus-mcp": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "github:tanakorncode/nexus-mcp"],
-      "env": { "NEXUS_API_URL": "http://27.254.62.17:8090" }
-    }
-  }
-}
-```
-
-Either way: reload the Claude Code window and approve the trust prompt. Verify with `whoami`.
-
-First run is slower (`npx` fetches + builds fresh); it caches after that.
 
 ### Developing on nexus-mcp itself
 
