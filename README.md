@@ -26,7 +26,17 @@ cp -r /tmp/claude-templates/skills/nexus-pick-up-task ~/.claude/skills/
 cp -r /tmp/claude-templates/skills/nexus-plan-work ~/.claude/skills/
 ```
 
-**Register with Claude Code** — add to the repo(s) you'll work in, as `.mcp.json` at the repo root:
+**Register with Claude Code** — two ways, not mutually exclusive:
+
+*Option A — for yourself, every repo, one time* (needs the `claude` CLI: `npm install -g @anthropic-ai/claude-code`):
+
+```bash
+claude mcp add nexus-mcp -s user -e NEXUS_API_URL=http://27.254.62.17:8090 -- npx -y github:tanakorncode/nexus-mcp
+```
+
+No `.mcp.json` needed anywhere after this — it applies across every repo you open on this machine.
+
+*Option B — commit `.mcp.json` to a specific repo*, so anyone who clones it gets `nexus-mcp` automatically even without Option A set up:
 
 ```json
 {
@@ -41,7 +51,7 @@ cp -r /tmp/claude-templates/skills/nexus-plan-work ~/.claude/skills/
 }
 ```
 
-Reload the Claude Code window and approve the trust prompt. Verify with `whoami`.
+Either way: reload the Claude Code window and approve the trust prompt. Verify with `whoami`.
 
 First run is slower (`npx` fetches + builds fresh); it caches after that.
 
