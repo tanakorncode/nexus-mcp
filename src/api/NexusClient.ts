@@ -50,6 +50,24 @@ export interface TaskDepRef {
   status: string;
 }
 
+export interface AttachmentRef {
+  id: string;
+  name: string;
+  url: string;
+  size: number;
+  mimeType: string;
+}
+
+export interface EmbedRef {
+  id: string;
+  url: string;
+  title: string;
+  description: string | null;
+  thumbnailUrl: string | null;
+  /** e.g. "figma", "google-docs" — whatever unfurled the link. */
+  provider: string;
+}
+
 export interface Task {
   id: string;
   taskKey: string;
@@ -75,6 +93,10 @@ export interface Task {
   blockedBy: TaskDepRef | null;
   /** Tasks waiting on this one — the other side of the hand-off. */
   blocks: TaskDepRef[];
+  /** Uploaded files — screenshots, mockups, exported assets. */
+  attachments: AttachmentRef[];
+  /** Unfurled links — Figma files, docs, etc. */
+  embeds: EmbedRef[];
   _count: { subtasks: number; comments: number };
 }
 
