@@ -1,51 +1,112 @@
 # nexus-mcp
 
-MCP server exposing the Nexus/TaskBridge PM system's **public `/api/v1/*` API** to Claude Code, so agents can read and update tasks directly instead of a human relaying state by hand.
+MCP server exposing the Nexus/TaskBridge PM system to Claude Code, so agents can read and update tasks directly instead of a human relaying state by hand. Paired with two skills in [`claude-templates`](https://github.com/tanakorncode/claude-templates) — `nexus-plan-work` (for PM/BA/Team Lead, authoring) and `nexus-pick-up-task` (for devs, consuming).
 
-## Why `/api/v1/*` and not the extension's own endpoints
+Talks to the PM system's public `/api/v1/*` API — not `nexus-vscode`'s internal endpoints, which are reserved for the official extensions. See `DEVLOG.md` for why, and for the full build history.
 
-`nexus-vscode` talks to `/api/auth/nexus/*` and `/api/nexus/*` — endpoints reserved for the official VS Code/IntelliJ extensions (the OAuth `redirect_uri` is validated against `vscode://` or a literal `http://127.0.0.1`, which a standalone tool can't satisfy). The PM system has a separate, actually-third-party-friendly surface for this: a **Developer Portal** (`/developer`) where you register an "app" and mint a personal access token, used against `/api/v1/*`.
-
-Trade-off: `/api/v1/*` only covers tasks / projects / sprints / members. No comments, no epics, no commit-linking — those only exist on the extension-only endpoints. `update_task_status` is still the core hand-off signal, so this doesn't block the main use case, but comment-based hand-off notes aren't possible against this API today.
-
-## Setup
+## Setup (one time, per person)
 
 ```bash
+git clone https://github.com/tanakorncode/nexus-mcp
+cd nexus-mcp
 npm install
+npm run build
+npm link          # makes the `nexus-mcp` command available anywhere on this machine
+```
+
+Generate your own access token, then log in:
+
+```bash
 export NEXUS_API_URL=http://27.254.62.17:8090
 npm run login
 ```
 
-`login` walks you through generating a token in the Developer Portal, then prompts for it plus your account email (needed because there's no `/me` endpoint — "my tasks" is resolved by matching your email against `/api/v1/members`). The token is stored in your OS keychain via `@napi-rs/keyring`.
+This walks you through the Developer Portal (`$NEXUS_API_URL/developer` → create an app → grant scopes `tasks:read tasks:write projects:read members:read sprints:read` → generate a token), then prompts for that token plus your account email. The token is stored in your OS keychain (`@napi-rs/keyring` — works on macOS/Windows/Linux), never in a file.
 
-Each teammate registers their own app + token in the Developer Portal and runs `npm run login` on their own machine.
-
-## Register with Claude Code
+**Install the skills** (once per person — see `claude-templates/README.md` for details):
 
 ```bash
-npm run build
-claude mcp add nexus-mcp \
-  -e NEXUS_API_URL=http://27.254.62.17:8090 \
-  -- node /path/to/nexus-mcp/dist/index.js
+mkdir -p ~/.claude/skills
+cp -r ~/development/pea/claude-templates/skills/nexus-pick-up-task ~/.claude/skills/
+cp -r ~/development/pea/claude-templates/skills/nexus-plan-work ~/.claude/skills/
 ```
+
+**Register with Claude Code** — add to the repo(s) you'll work in, as `.mcp.json` at the repo root:
+
+```json
+{
+  "mcpServers": {
+    "nexus-mcp": {
+      "type": "stdio",
+      "command": "nexus-mcp",
+      "args": [],
+      "env": { "NEXUS_API_URL": "http://27.254.62.17:8090" }
+    }
+  }
+}
+```
+
+Reload the Claude Code window and approve the trust prompt. Verify with `whoami`.
+
+## The two skills, and when each applies
+
+- **`nexus-plan-work`** — breaking a feature into epic/story/task. Use before work exists. The discipline that matters here: one story per feature that spans repos, one task per repo underneath it, `repositoryId` set on every task (the single most-skipped field, and the one that's unrecoverable later if missed).
+- **`nexus-pick-up-task`** — finding, understanding, and executing a task, ending in a PR and a status update. Use once work exists and someone (human or a scheduled check) is ready to act on it.
+
+Read the skill files themselves for the full step-by-step — this README won't duplicate them.
 
 ## Tools
 
+**Identity & discovery**
 | Tool | Purpose |
 |---|---|
-| `whoami` | Resolve the configured member (by email) |
-| `list_projects` | Projects the user is a member of |
-| `get_current_project` | Auto-detect project from the current branch's task key prefix (e.g. `ALPHA-42` → project key `ALPHA`) |
-| `list_my_tasks` | Tasks assigned to the user (optionally filtered by status) |
-| `get_task` / `get_task_by_key` | Task detail, by id or by key |
-| `get_current_task` | Resolve task key from the current branch and fetch its detail |
+| `whoami` | Resolve the configured member (matched by email — there's no `/me` endpoint) |
+| `list_projects` | Projects you're a member of |
+| `get_current_project` | Auto-detect the project for the current repo — tries git-remote → registered `GitRepository` first, falls back to the branch's task-key prefix |
+| `get_current_repository` | Match the current repo against Nexus's registered repos. Returns "not registered" (not an error) if nobody's added this repo in Project Settings yet |
+
+**Reading tasks**
+| Tool | Purpose |
+|---|---|
+| `list_my_tasks` | Tasks assigned to you (filter by `status`, narrow by `repositoryId`) |
+| `get_task` / `get_task_by_key` | Full task detail, by id or human key (e.g. `ALPHA-42`) — includes `story`, `repository`, `blockedBy`/`blocks`, `attachments`, `embeds` |
+| `get_current_task` | Resolve the task key from the current branch name and fetch its detail |
+| `list_story_tasks` | Sibling tasks under the same story — the "other half" of a cross-repo hand-off |
 | `list_statuses` | Workflow statuses for a project — exact strings `update_task_status` accepts |
-| `update_task_status` | Move a task to a new status — the hand-off signal |
-| `list_sprints` | Sprints in a project |
-| `list_members` | Team members sharing a project with the user |
+| `list_sprints` / `list_members` | Sprints in a project / teammates sharing a project with you |
 
-Project id auto-detects from the current git branch's task-key prefix when omitted (there's no git-remote lookup on the public API, unlike the extension's internal endpoint) — pass it explicitly if that fails.
+**Authoring** (see `nexus-plan-work`)
+| Tool | Purpose |
+|---|---|
+| `list_epics` | Epics in a project |
+| `list_stories` | Stories under an epic — check before creating a duplicate |
+| `create_story` | New story under an epic |
+| `create_task` | New task — `epicId` required; set `storyId`/`repositoryId`/`blockedById` at creation if known |
+| `update_task_links` | Set or clear `storyId`/`repositoryId`/`blockedById` on an existing task (pass `null` to unset) |
 
-## Not possible against this API
+**Hand-off**
+| Tool | Purpose |
+|---|---|
+| `update_task_status` | Move a task to a new status by name — the signal the next person/agent watches for |
 
-`add_comment`, `list_epics`, `get_task_commits`, `link_commit` — no `/api/v1/*` route backs any of these; they only exist on the internal `/api/nexus/*` surface reserved for the official extensions. If these matter enough, the fix has to happen on the `pm-system` side (add the routes to `/api/v1/*`), not in this client.
+## Optional: scheduled task check (notification only)
+
+`scripts/check-my-tasks.sh` runs headless (`claude -p`) and checks `list_my_tasks` on a timer, firing a macOS notification if anything's ready — it does **not** start writing code by itself (`--allowedTools` is locked to read-only tools plus `Bash(osascript*)`, so it structurally can't edit files even if it wanted to).
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.pea-thailand.nexus-task-check.plist   # enable, runs every 2h
+launchctl unload ~/Library/LaunchAgents/com.pea-thailand.nexus-task-check.plist # disable
+tail -f ~/Library/Logs/nexus-task-check.log                                     # watch it run
+./scripts/check-my-tasks.sh                                                     # run once, right now
+```
+
+The plist itself isn't in this repo (it's local machine config, per person) — copy the one in `DEVLOG.md`'s 2026-08-22 entry, or ask whoever set theirs up.
+
+This only checks; a person still has to open Claude Code and say "go" once notified — see `DEVLOG.md` if you want the reasoning for why it stops there.
+
+## Known limits
+
+- No comment support, no commit-linking — those routes only exist on the extension-only internal API, not `/api/v1/*`. Would need new `pm-system` routes to add.
+- No epic creation via API — epics are infrequent/lead-planned; use the product UI.
+- No attachment/embed *upload* via API (reading them works — `get_task` returns both) — attach Figma links/screenshots through the product UI.
+- Repo-scoped and story-scoped queries only return results once someone actually sets `repositoryId`/`storyId` on tasks — nothing is inferred automatically.
