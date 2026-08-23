@@ -77,6 +77,8 @@ export interface LabelRef {
 export interface Task {
   id: string;
   taskKey: string;
+  /** Direct link to this task in the Nexus web UI. */
+  url: string;
   name: string;
   status: string;
   priority: Priority;
@@ -119,6 +121,8 @@ export interface ProjectStatus {
 export interface Project {
   id: string;
   name: string;
+  /** Direct link to this project's board in the Nexus web UI. */
+  url: string;
   key: string;
   status?: string;
   _count: { epics: number; members: number; sprints: number };
