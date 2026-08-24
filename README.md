@@ -87,6 +87,46 @@ npm link          # makes the `nexus-mcp` command available anywhere on this mac
 
 Point `.mcp.json` at `"command": "nexus-mcp"` (no `args`) instead of the `npx` form while iterating — rebuild (`npm run build`) and reload the Claude Code window to pick up changes; the MCP server process holds old code in memory otherwise.
 
+## Editor support
+
+Login (`nexus-mcp-login`) is the same regardless of editor — it's a standalone CLI step, not tied to Claude Code. What differs is where each editor looks for MCP server and skill config.
+
+| | Claude Code | Antigravity IDE |
+|---|---|---|
+| MCP server | Plugin (`claude plugin install ...`, see Setup above) or `.mcp.json` | `~/.gemini/config/mcp_config.json` (global) or `.agents/mcp_config.json` (workspace) |
+| Skills | Bundled in the plugin, or `~/.claude/skills/` | `.agents/skills/<name>/` (workspace) or `~/.gemini/antigravity/skills/<name>/` (global) |
+
+**Antigravity setup** — no plugin system there, so it's two manual steps instead of one:
+
+1. **MCP server** — add to `~/.gemini/config/mcp_config.json` or `.agents/mcp_config.json`:
+
+   ```json
+   {
+     "mcpServers": {
+       "nexus-mcp": {
+         "command": "npx",
+         "args": ["-y", "github:tanakorncode/nexus-mcp"],
+         "env": {
+           "NEXUS_API_URL": "http://27.254.62.17:8090"
+         }
+       }
+     }
+   }
+   ```
+
+   (Same `mcpServers` shape as Claude Code's `.mcp.json` — Antigravity's UI equivalent: `...` in the agent panel → MCP Servers → Manage MCP Servers → View raw config.)
+
+2. **Skills** — `SKILL.md` is the same standard both editors read, so the files need no changes, just copying into Antigravity's own skills directory:
+
+   ```bash
+   mkdir -p .agents/skills
+   git clone --depth 1 https://github.com/tanakorncode/claude-templates /tmp/claude-templates
+   cp -r /tmp/claude-templates/skills/nexus-pick-up-task .agents/skills/
+   cp -r /tmp/claude-templates/skills/nexus-plan-work .agents/skills/
+   ```
+
+A person switching between the two editors on the same machine can keep both configs side by side — they don't conflict, and the OS keychain login is shared (one `nexus-mcp-login` covers both).
+
 ## The two skills, and when each applies
 
 - **`nexus-plan-work`** — breaking a feature into epic/story/task. Use before work exists. The discipline that matters here: one story per feature that spans repos, one task per repo underneath it, `repositoryId` set on every task (the single most-skipped field, and the one that's unrecoverable later if missed).
