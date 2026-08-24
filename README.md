@@ -8,14 +8,25 @@ Talks to the PM system's public `/api/v1/*` API — not `nexus-vscode`'s interna
 
 **Option A — plugin (recommended).** This repo is itself a Claude Code plugin — one install registers the MCP server *and* both skills (`nexus-pick-up-task`, `nexus-plan-work`) together, no `.mcp.json` or `git clone` of `claude-templates` needed.
 
-**1. Log in** — generates a token via the Developer Portal and stores it in your OS keychain (`@napi-rs/keyring` — never in a file):
+**1. Log in** — opens your browser to sign in (same pattern as `gh auth login`/`claude login`), then stores the tokens in your OS keychain (`@napi-rs/keyring` — never in a file):
 
 ```bash
-export NEXUS_API_URL=http://27.254.62.17:8090
 npx -y -p github:tanakorncode/nexus-mcp nexus-mcp-login
 ```
 
+No account/email typing needed — identity comes back from the login itself. `NEXUS_API_URL` defaults to production; only set it if you're pointing at a different instance (e.g. local dev).
+
+<details>
+<summary>Browser can't reach this machine, or a headless box? Use the old PAT flow instead</summary>
+
+```bash
+export NEXUS_API_URL=http://27.254.62.17:8090
+npx -y -p github:tanakorncode/nexus-mcp nexus-mcp-login --manual
+```
+
 Walks you through `$NEXUS_API_URL/developer` → create an app → grant scopes `tasks:read tasks:write projects:read members:read sprints:read` → generate a token — then prompts you to paste that token plus your account email.
+
+</details>
 
 **2. Install the plugin** (two commands — the first registers this repo as a plugin source, the second actually installs it):
 
@@ -31,7 +42,7 @@ claude plugin install nexus-mcp@nexus-mcp-marketplace
 <details>
 <summary>Option B — manual (same result, more steps — useful if <code>claude plugin install</code> isn't available on your version)</summary>
 
-**1. Log in** — same as Option A above.
+**1. Log in** — same as Option A above (`nexus-mcp-login`, or `--manual` for the PAT flow).
 
 **2. Register with Claude Code** — pick one (not both needed, but they can coexist):
 
@@ -57,6 +68,10 @@ cp -r /tmp/claude-templates/skills/nexus-plan-work ~/.claude/skills/
 ```
 
 </details>
+
+### Switching accounts
+
+Run `nexus-mcp-login` again — it always overwrites whatever was stored before, no need to log out first. One gotcha specific to the browser flow: if you're still signed into pm-system *in your browser* as the old account, the login page won't prompt you again — it'll just hand back a code for that same old account. Sign out of pm-system in the browser first (or use a private/incognito window) if you're actually switching who you are, not just refreshing the current login.
 
 ### Developing on nexus-mcp itself
 
