@@ -158,6 +158,7 @@ Read the skill files themselves for the full step-by-step — this README won't 
 | Tool | Purpose |
 |---|---|
 | `list_epics` | Epics in a project |
+| `create_epic` | New epic — `code` auto-generates in the product's own format if omitted; confirm with the person first, epics are a bigger commitment than a task |
 | `list_stories` | Stories under an epic — check before creating a duplicate |
 | `create_story` | New story under an epic |
 | `list_labels` / `create_label` | Labels in a project / create a new one |
@@ -187,6 +188,5 @@ This only checks; a person still has to open Claude Code and say "go" once notif
 ## Known limits
 
 - No comment support, no commit-linking — those routes only exist on the extension-only internal API, not `/api/v1/*`. Would need new `pm-system` routes to add.
-- No epic creation via API — epics are infrequent/lead-planned; use the product UI.
 - No attachment/embed *upload* via API (reading them works — `get_task` returns both) — attach Figma links/screenshots through the product UI.
 - Repo-scoped, story-scoped, and label-filtered queries only return results once someone actually sets `repositoryId`/`storyId`/`labelIds` on tasks — nothing is inferred automatically.

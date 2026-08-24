@@ -15,7 +15,7 @@ Everything `nexus-pick-up-task` relies on to find "the right task" and "what it'
 
 ## Steps
 
-1. **Find or confirm the epic.** `list_epics` for the project. Epics are usually pre-planned (quarters/major initiatives) by a lead through the web UI, not created ad hoc here — there's no `create_epic` tool. If none fits, that's a signal to go create one in the product first, not a reason to force the task under the wrong epic.
+1. **Find or confirm the epic.** `list_epics` for the project. Epics are usually pre-planned (quarters/major initiatives) by a lead, and creating one is a bigger commitment than a task or story — don't `create_epic` reflexively just because none fits perfectly. Check with the person before creating a new epic rather than assuming; if they confirm, `create_epic` (name required, everything else optional — `code` auto-generates in the product's own format if omitted).
 
 2. **Decide if this feature spans multiple repos.** If yes (e.g. "add a registration page" = frontend UI + backend API), it needs **one story with one task per repo underneath it** — that's the whole mechanism `list_story_tasks` depends on later. Check `list_stories` on the epic first; don't create a duplicate story for a feature that already has one. If none exists, `create_story`.
 
@@ -40,4 +40,4 @@ Everything `nexus-pick-up-task` relies on to find "the right task" and "what it'
 
 ## What this skill does not do
 
-Doesn't create epics (step 1) or attach files/links (step 5) — both stay web-UI-only for now. Doesn't guess at any field the planner doesn't actually know — leaving a field unset after asking is honest; guessing wrong is worse, because it'll silently mismatch later instead of visibly failing now. And it never calls `create_task` without the person confirming the full field set first (step 4).
+Doesn't attach files/links (step 5) — that stays web-UI-only for now. Doesn't create an epic without the person explicitly confirming it first (step 1) — epics are a bigger, less frequent commitment than a task. Doesn't guess at any field the planner doesn't actually know — leaving a field unset after asking is honest; guessing wrong is worse, because it'll silently mismatch later instead of visibly failing now. And it never calls `create_task` without the person confirming the full field set first (step 4).

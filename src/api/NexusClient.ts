@@ -357,6 +357,18 @@ export class NexusClient {
     return data;
   }
 
+  async createEpic(input: {
+    projectId: string;
+    name: string;
+    code?: string;
+    description?: string;
+    priority?: Priority;
+    color?: string;
+  }): Promise<Epic> {
+    const { data } = await this.request<{ data: Epic }>("POST", "/api/v1/epics", input);
+    return data;
+  }
+
   async listStories(epicId: string): Promise<Story[]> {
     const { data } = await this.request<{ data: Story[] }>("GET", `/api/v1/stories${this.qs({ epicId })}`);
     return data;

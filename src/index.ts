@@ -198,6 +198,27 @@ server.tool(
 );
 
 server.tool(
+  "create_epic",
+  "Create an epic — the top level of the hierarchy, above stories and tasks. Epics are normally infrequent/lead-planned; check list_epics first so you don't create a near-duplicate of one that already exists. code is optional — omit it to get the same auto-generated format the product UI uses (<last 4 chars of projectId>-E<seq>); codes are globally unique across all projects, so a manually chosen one must not collide with any existing epic.",
+  {
+    projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo."),
+    name: z.string(),
+    code: z.string().optional().describe("Globally unique epic code. Omit to auto-generate."),
+    description: z.string().optional(),
+    priority: z.enum(["LOW", "MEDIUM", "HIGH", "HIGHEST"]).optional(),
+    color: z.string().optional().describe("Hex color, e.g. #3b82f6. Omit for the default."),
+  },
+  async ({ projectId, name, code, description, priority, color }) => {
+    try {
+      const id = await resolveProjectId(projectId);
+      return textResult(await client.createEpic({ projectId: id, name, code, description, priority, color }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
   "list_stories",
   "List stories under an epic — check this before creating a new story, in case one already exists for the feature you're about to add a task to.",
   { epicId: z.string() },
