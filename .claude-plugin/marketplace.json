@@ -1,0 +1,15 @@
+{
+  "name": "nexus-mcp-marketplace",
+  "description": "Nexus/TaskBridge PM system integration for Claude Code — MCP server plus task-planning and task-pickup skills",
+  "owner": {
+    "name": "tanakorncode",
+    "email": "tanakorncode@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "nexus-mcp",
+      "source": "./",
+      "description": "Nexus/TaskBridge PM system integration — bundles the nexus-mcp server plus the nexus-pick-up-task and nexus-plan-work skills in one install"
+    }
+  ]
+}

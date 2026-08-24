@@ -17,10 +17,11 @@ npx -y -p github:tanakorncode/nexus-mcp nexus-mcp-login
 
 Walks you through `$NEXUS_API_URL/developer` → create an app → grant scopes `tasks:read tasks:write projects:read members:read sprints:read` → generate a token — then prompts you to paste that token plus your account email.
 
-**2. Install the plugin:**
+**2. Install the plugin** (two commands — the first registers this repo as a plugin source, the second actually installs it):
 
 ```bash
-claude plugin install github:tanakorncode/nexus-mcp
+claude plugin marketplace add tanakorncode/nexus-mcp
+claude plugin install nexus-mcp@nexus-mcp-marketplace
 ```
 
 **3. Reload Claude Code** (new window / restart the session) — required, the running session doesn't pick up a newly-installed plugin on its own. First connection is slower (`npx` fetches + builds fresh); cached after that. Approve the one-time trust prompt.
