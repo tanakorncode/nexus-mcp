@@ -6,7 +6,7 @@ Talks to the PM system's public `/api/v1/*` API — not `nexus-vscode`'s interna
 
 ## Setup (one time, per person)
 
-Four steps, in order — **logging in does not, by itself, make Claude Code aware nexus-mcp exists.** That's a separate step (2 below). No `git clone` needed anywhere in this list — `npx` fetches, builds, and runs straight from GitHub.
+**Option A — plugin (recommended).** This repo is itself a Claude Code plugin — one install registers the MCP server *and* both skills (`nexus-pick-up-task`, `nexus-plan-work`) together, no `.mcp.json` or `git clone` of `claude-templates` needed.
 
 **1. Log in** — generates a token via the Developer Portal and stores it in your OS keychain (`@napi-rs/keyring` — never in a file):
 
@@ -16,6 +16,21 @@ npx -y -p github:tanakorncode/nexus-mcp nexus-mcp-login
 ```
 
 Walks you through `$NEXUS_API_URL/developer` → create an app → grant scopes `tasks:read tasks:write projects:read members:read sprints:read` → generate a token — then prompts you to paste that token plus your account email.
+
+**2. Install the plugin:**
+
+```bash
+claude plugin install github:tanakorncode/nexus-mcp
+```
+
+**3. Reload Claude Code** (new window / restart the session) — required, the running session doesn't pick up a newly-installed plugin on its own. First connection is slower (`npx` fetches + builds fresh); cached after that. Approve the one-time trust prompt.
+
+**4. Verify** — ask Claude to call `whoami`. If it resolves your name, and both skills show up in `/skills`, all done.
+
+<details>
+<summary>Option B — manual (same result, more steps — useful if <code>claude plugin install</code> isn't available on your version)</summary>
+
+**1. Log in** — same as Option A above.
 
 **2. Register with Claude Code** — pick one (not both needed, but they can coexist):
 
@@ -29,9 +44,7 @@ Walks you through `$NEXUS_API_URL/developer` → create an app → grant scopes 
 
 - **Or**, if a repo you're opening already has `.mcp.json` committed at its root (e.g. `pea-thailand-backoffice-be`) — nothing to do, Claude Code picks it up on its own when you open that repo. Only relevant if you *didn't* do the step above.
 
-**3. Reload Claude Code** (new window / restart the session) — required either way, the running session doesn't pick up a newly-registered server on its own. First connection is slower (`npx` fetches + builds fresh); cached after that. Approve the one-time trust prompt.
-
-**4. Verify** — ask Claude to call `whoami`. If it resolves your name, all four steps worked.
+**3. Reload Claude Code**, then **4. Verify** — same as Option A.
 
 **Install the skills too** (once per person — see `claude-templates/README.md` for details):
 
@@ -41,6 +54,8 @@ git clone --depth 1 https://github.com/tanakorncode/claude-templates /tmp/claude
 cp -r /tmp/claude-templates/skills/nexus-pick-up-task ~/.claude/skills/
 cp -r /tmp/claude-templates/skills/nexus-plan-work ~/.claude/skills/
 ```
+
+</details>
 
 ### Developing on nexus-mcp itself
 

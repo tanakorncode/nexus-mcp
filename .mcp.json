@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "nexus-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "github:tanakorncode/nexus-mcp"],
+      "env": {
+        "NEXUS_API_URL": "http://27.254.62.17:8090"
+      }
+    }
+  }
+}

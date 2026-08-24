@@ -80,3 +80,16 @@ The real question this was for: one Nexus project covers multiple actual repos (
 - Typechecks clean, rebuilt.
 
 **Not done:** end-to-end test against real data — blocked on nothing existing to match against yet (no repos, no story-linked tasks in active use, no blockedBy links set by anyone). `list_story_tasks` is the one piece with real data behind it (PEA-T048/049/050) and should be testable now. `blockedById`-based sequencing depends entirely on PM/BA actually setting it when planning work — the tooling can only surface it, not invent it.
+
+## 2026-08-24 — packaged as a Claude Code plugin
+
+**Why:** the manual setup (login → `claude mcp add` or `.mcp.json` → reload → separately `git clone claude-templates` and copy two skill folders by hand) was too many steps for a new teammate to get right — this is exactly what surfaced during the Windows teammate onboarding earlier this week.
+
+**Verified real before building anything** (burned once already this session by trusting an agent's unverified claim about MCP config paths) — ran the actual `claude` CLI: `claude plugin init/install/validate/marketplace` all real subcommands; scaffolded a real throwaway plugin (`claude plugin init --with skills mcp`) and inspected the generated files directly. Confirmed: `.claude-plugin/plugin.json`'s `"skills": ["./"]` auto-discovers every `skills/*/SKILL.md` under the plugin root — no root-level `SKILL.md` required (tested with two nested skill dirs and no root file, `claude plugin validate` still passed).
+
+**Done:**
+- `nexus-mcp` repo is now itself a plugin — added `.claude-plugin/plugin.json`, root `.mcp.json` (same `npx github:tanakorncode/nexus-mcp` form as the existing `claude mcp add` command, so no separate config step), and `skills/nexus-pick-up-task/` + `skills/nexus-plan-work/` (copied from `claude-templates`, which stays the source of truth for anyone browsing templates rather than installing).
+- `claude plugin validate .` passes.
+- README restructured: plugin install (`claude plugin install github:tanakorncode/nexus-mcp`) is now Option A / the recommended path — login, install, reload, verify, done. Old manual steps kept as Option B (collapsed `<details>`) in case `claude plugin install` isn't available on someone's CLI version.
+
+**Not done / known gap:** `skills/nexus-pick-up-task` and `skills/nexus-plan-work` now exist in two places (`claude-templates` and here) — content has to be mirrored by hand on future edits, no build step keeps them in sync. Accepted the duplication for now since the two repos serve different distribution needs (browse-and-copy vs single-command-install); revisit if the skills start drifting. Full plugin install → skill auto-load hasn't been verified with a real session reload yet (only schema validation) — next teammate to install it should confirm `/skills` lists both.

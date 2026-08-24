@@ -1,0 +1,13 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "nexus-mcp",
+  "version": "0.1.0",
+  "description": "Nexus/TaskBridge PM system integration — bundles the nexus-mcp server plus the nexus-pick-up-task and nexus-plan-work skills in one install",
+  "author": {
+    "name": "tanakorncode",
+    "email": "tanakorncode@gmail.com"
+  },
+  "skills": [
+    "./"
+  ]
+}
