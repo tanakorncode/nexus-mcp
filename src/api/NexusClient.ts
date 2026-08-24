@@ -191,8 +191,6 @@ interface Paged<T> {
 // ── Client ────────────────────────────────────────────────────────────────────
 
 export class NexusClient {
-  private _memberCache: Member[] | null = null;
-
   constructor(
     private readonly tokenStore: TokenStore,
     private readonly getApiUrl: () => string,
@@ -371,11 +369,11 @@ export class NexusClient {
   // ── Members / identity ───────────────────────────────────────────────────
   // No /me endpoint exists on the public API — resolve "self" by matching the
   // email captured at login against /api/v1/members (requires members:read).
+  // Not cached: project membership changes (e.g. someone just got added) need
+  // to show up on the next call, not after a process restart.
 
   async listMembers(): Promise<Member[]> {
-    if (this._memberCache) return this._memberCache;
     const { data } = await this.request<{ data: Member[] }>("GET", "/api/v1/members");
-    this._memberCache = data;
     return data;
   }
 
