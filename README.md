@@ -159,6 +159,7 @@ Read the skill files themselves for the full step-by-step — this README won't 
 |---|---|
 | `list_epics` | Epics in a project |
 | `create_epic` | New epic — `code` auto-generates in the product's own format if omitted; confirm with the person first, epics are a bigger commitment than a task |
+| `update_epic` | Change name/description/priority/status/color on an epic — `code`/`projectId` aren't editable |
 | `list_stories` | Stories under an epic — check before creating a duplicate |
 | `create_story` | New story under an epic |
 | `list_labels` / `create_label` | Labels in a project / create a new one |

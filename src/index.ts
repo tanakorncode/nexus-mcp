@@ -219,6 +219,26 @@ server.tool(
 );
 
 server.tool(
+  "update_epic",
+  "Update an epic's name, description, priority, status, or color. code and projectId aren't editable here (code is globally unique and not meant to be reassigned; moving an epic between projects isn't supported).",
+  {
+    epicId: z.string(),
+    name: z.string().optional(),
+    description: z.string().nullable().optional(),
+    priority: z.enum(["LOW", "MEDIUM", "HIGH", "HIGHEST"]).optional(),
+    status: z.string().optional(),
+    color: z.string().optional().describe("Hex color, e.g. #3b82f6."),
+  },
+  async ({ epicId, name, description, priority, status, color }) => {
+    try {
+      return textResult(await client.updateEpic(epicId, { name, description, priority, status, color }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
   "list_stories",
   "List stories under an epic — check this before creating a new story, in case one already exists for the feature you're about to add a task to.",
   { epicId: z.string() },

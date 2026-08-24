@@ -369,6 +369,20 @@ export class NexusClient {
     return data;
   }
 
+  async updateEpic(
+    epicId: string,
+    patch: {
+      name?: string;
+      description?: string | null;
+      priority?: Priority;
+      status?: string;
+      color?: string;
+    },
+  ): Promise<Epic> {
+    const { data } = await this.request<{ data: Epic }>("PATCH", `/api/v1/epics/${epicId}`, patch);
+    return data;
+  }
+
   async listStories(epicId: string): Promise<Story[]> {
     const { data } = await this.request<{ data: Story[] }>("GET", `/api/v1/stories${this.qs({ epicId })}`);
     return data;
