@@ -1,14 +1,31 @@
 import { Entry } from "@napi-rs/keyring";
 
-export interface TokenSet {
+export interface PatTokenSet {
+  type: "pat";
   token: string; // pm_<hex> personal access token from the Developer Portal
   email: string; // used to resolve "me" against /api/v1/members (no /me endpoint exists)
 }
 
-const SERVICE = "nexus-mcp";
-const ACCOUNT = "pat";
+export interface OAuthUser {
+  id: string;
+  email: string;
+  name: string;
+}
 
-/** Stores the Nexus personal access token in the OS keychain, cross-platform via @napi-rs/keyring. */
+export interface OAuthTokenSet {
+  type: "oauth";
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number; // ms epoch
+  user: OAuthUser;
+}
+
+export type TokenSet = PatTokenSet | OAuthTokenSet;
+
+const SERVICE = "nexus-mcp";
+const ACCOUNT = "pat"; // legacy keychain account name — kept so pre-OAuth logins aren't orphaned
+
+/** Stores the Nexus auth tokens in the OS keychain, cross-platform via @napi-rs/keyring. */
 export class TokenStore {
   private readonly entry = new Entry(SERVICE, ACCOUNT);
 
@@ -19,7 +36,13 @@ export class TokenStore {
   async get(): Promise<TokenSet | null> {
     try {
       const raw = this.entry.getPassword();
-      return raw ? (JSON.parse(raw) as TokenSet) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<TokenSet> & { token?: string; email?: string };
+      // Logins from before OAuth support stored `{token, email}` with no `type` field.
+      if (!parsed.type && parsed.token && parsed.email) {
+        return { type: "pat", token: parsed.token, email: parsed.email };
+      }
+      return parsed as TokenSet;
     } catch {
       return null;
     }

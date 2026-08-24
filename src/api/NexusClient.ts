@@ -1,4 +1,4 @@
-import type { TokenStore } from "../auth/TokenStore.js";
+import type { TokenStore, OAuthTokenSet } from "../auth/TokenStore.js";
 
 // ── Domain types — matches pm-system's public /api/v1/* shapes exactly ────────
 // (nested relations, not the flat *_Name strings the internal /api/nexus/*
@@ -196,15 +196,55 @@ export class NexusClient {
     private readonly getApiUrl: () => string,
   ) {}
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  /** Resolves the Bearer token to send — a PAT as-is, or a valid/refreshed OAuth access token. */
+  private async getBearerToken(): Promise<string> {
     const tokens = await this.tokenStore.get();
     if (!tokens) throw new NotAuthenticatedError();
+
+    if (tokens.type === "pat") return tokens.token;
+
+    // Refresh proactively if within 60s of expiry, so a mid-request 401 is rare.
+    if (Date.now() < tokens.expiresAt - 60_000) return tokens.accessToken;
+    return this.refreshOAuth(tokens);
+  }
+
+  private async refreshOAuth(tokens: OAuthTokenSet): Promise<string> {
+    const res = await fetch(`${this.getApiUrl()}/api/auth/nexus/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: tokens.refreshToken }),
+    });
+
+    if (!res.ok) throw new NotAuthenticatedError();
+
+    const data = (await res.json()) as {
+      access_token: string;
+      refresh_token: string;
+      expires_in: number;
+      user: OAuthTokenSet["user"];
+    };
+
+    // The server rotates refresh tokens on every use — the old one is revoked,
+    // so the new one must be persisted or the next refresh will fail.
+    const updated: OAuthTokenSet = {
+      type: "oauth",
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt: Date.now() + data.expires_in * 1000,
+      user: data.user,
+    };
+    await this.tokenStore.store(updated);
+    return updated.accessToken;
+  }
+
+  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const bearer = await this.getBearerToken();
 
     const res = await fetch(`${this.getApiUrl()}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${tokens.token}`,
+        Authorization: `Bearer ${bearer}`,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
@@ -380,6 +420,19 @@ export class NexusClient {
   async getCurrentMember(): Promise<Member> {
     const tokens = await this.tokenStore.get();
     if (!tokens) throw new NotAuthenticatedError();
+
+    // OAuth logins get identity straight from the token exchange — no /members
+    // lookup, no email-matching, and no chance of the "no member found" error
+    // PAT logins can hit if the email typed at login doesn't match exactly.
+    if (tokens.type === "oauth") {
+      return {
+        id: tokens.user.id,
+        name: tokens.user.name,
+        email: tokens.user.email,
+        displayRole: null,
+        avatarColor: null,
+      };
+    }
 
     const members = await this.listMembers();
     const me = members.find((m) => m.email.toLowerCase() === tokens.email.toLowerCase());
