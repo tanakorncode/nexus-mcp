@@ -162,9 +162,11 @@ Read the skill files themselves for the full step-by-step — this README won't 
 | `update_epic` | Change name/description/priority/status/color on an epic — `code`/`projectId` aren't editable |
 | `list_stories` | Stories under an epic — check before creating a duplicate |
 | `create_story` | New story under an epic |
+| `update_story` | Change name/description/priority/status/storyPoints on a story — `epicId` isn't editable |
 | `list_labels` / `create_label` | Labels in a project / create a new one |
 | `create_task` | New task — `epicId` required; set `storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` at creation if known |
-| `update_task` | Change name/description/priority/dueDate/storyPoints/`storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` on an existing task (`null` unsets a field; `labelIds` is a full replace, not a diff) |
+| `update_task` | Change name/description/priority/dueDate/storyPoints/archived/`storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` on an existing task (`null` unsets a field; `labelIds` is a full replace, not a diff) — `archived: true`/`false` archives/restores instead of deleting |
+| `list_task_git_activity` | Commits/MRs linked to a task, newest first — read-only, populated by GitLab webhooks |
 
 **Hand-off**
 | Tool | Purpose |
@@ -189,6 +191,10 @@ This only checks; a person still has to open Claude Code and say "go" once notif
 
 ## Known limits
 
-- No commit-linking via API — `GitActivity` (MR/branch/commit info) is populated by GitLab webhooks, not writable through `/api/v1/*`. Reading it isn't exposed either yet.
 - No attachment/embed *upload* via API (reading them works — `get_task` returns both) — attach Figma links/screenshots through the product UI.
+- No hard delete for epics/stories/labels — only `archived` on tasks (soft, reversible). Real delete would need cascade-safety design work not done yet; use the product UI for now.
+- No search-by-keyword — `list_my_tasks` filters by `status`/`repositoryId` only, `get_task_by_key` needs the exact key.
+- No sprint assignment on tasks/stories via API (`sprintId` is readable, not settable) — set it through the product UI.
+- No multi-assignee/reviewer — `assigneeId` is a single value.
 - Repo-scoped, story-scoped, and label-filtered queries only return results once someone actually sets `repositoryId`/`storyId`/`labelIds` on tasks — nothing is inferred automatically.
+- `list_*` tools have no pagination — fine at current scale, revisit if a project's task count grows a lot.
