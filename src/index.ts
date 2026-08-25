@@ -271,6 +271,26 @@ server.tool(
 );
 
 server.tool(
+  "update_story",
+  "Update a story's name/description/priority/status/storyPoints. epicId isn't editable here — moving a story between epics isn't supported.",
+  {
+    storyId: z.string(),
+    name: z.string().optional(),
+    description: z.string().nullable().optional(),
+    priority: z.enum(["LOW", "MEDIUM", "HIGH", "HIGHEST"]).optional(),
+    status: z.string().optional(),
+    storyPoints: z.number().optional(),
+  },
+  async ({ storyId, name, description, priority, status, storyPoints }) => {
+    try {
+      return textResult(await client.updateStory(storyId, { name, description, priority, status, storyPoints }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
   "list_labels",
   "List labels defined in a project. Check before create_label, to avoid creating a duplicate.",
   { projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo.") },
@@ -332,7 +352,7 @@ server.tool(
 
 server.tool(
   "update_task",
-  "Change any field on an existing task — name/description/priority/dueDate/storyPoints, or story/repository/blocked-by/assignee/labels. Pass null for storyId/repositoryId/blockedById/assigneeId/dueDate/description to unset one, omit fields you don't want to change. labelIds is a full replace, not a diff — pass the complete set of label ids the task should end up with (use list_labels to see ids, get_task to see the task's current labelIds via taskLabels). Note: status changes go through update_task_status, not this tool.",
+  "Change any field on an existing task — name/description/priority/dueDate/storyPoints/archived, or story/repository/blocked-by/assignee/labels. Pass null for storyId/repositoryId/blockedById/assigneeId/dueDate/description to unset one, omit fields you don't want to change. labelIds is a full replace, not a diff — pass the complete set of label ids the task should end up with (use list_labels to see ids, get_task to see the task's current labelIds via taskLabels). To archive a mistaken/duplicate task, pass archived: true — pass archived: false to bring it back. Note: status changes go through update_task_status, not this tool.",
   {
     taskId: z.string(),
     name: z.string().optional(),
@@ -345,8 +365,9 @@ server.tool(
     blockedById: z.string().nullable().optional(),
     assigneeId: z.string().nullable().optional().describe("See list_members."),
     labelIds: z.array(z.string()).optional().describe("Full replacement set — see list_labels."),
+    archived: z.boolean().optional().describe("true to archive (soft-remove), false to restore."),
   },
-  async ({ taskId, name, description, priority, dueDate, storyPoints, storyId, repositoryId, blockedById, assigneeId, labelIds }) => {
+  async ({ taskId, name, description, priority, dueDate, storyPoints, storyId, repositoryId, blockedById, assigneeId, labelIds, archived }) => {
     try {
       return textResult(
         await client.updateTask(taskId, {
@@ -360,8 +381,22 @@ server.tool(
           blockedById,
           assigneeId,
           labelIds,
+          archived,
         }),
       );
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "list_task_git_activity",
+  "Commits and merge requests linked to a task, newest first — the reverse lookup from a task to its related PRs/branches. Read-only: this is populated automatically by GitLab webhooks, not something you can attach manually after the fact.",
+  { taskId: z.string() },
+  async ({ taskId }) => {
+    try {
+      return textResult(await client.listTaskGitActivity(taskId));
     } catch (err) {
       return errorResult(err);
     }

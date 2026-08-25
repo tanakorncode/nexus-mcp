@@ -74,6 +74,26 @@ export interface LabelRef {
   color: string;
 }
 
+export interface GitActivity {
+  id: string;
+  type: "COMMIT" | "MR_OPENED" | "MR_UPDATED" | "MR_MERGED" | "MR_CLOSED" | "MR_APPROVED" | "MR_READY_FOR_REVIEW";
+  commitSha: string | null;
+  commitMessage: string | null;
+  commitUrl: string | null;
+  commitBranch: string | null;
+  authorName: string | null;
+  mrIid: number | null;
+  mrTitle: string | null;
+  mrUrl: string | null;
+  mrState: "OPENED" | "CLOSED" | "MERGED" | "LOCKED" | null;
+  mrSourceBranch: string | null;
+  mrTargetBranch: string | null;
+  mrAuthorName: string | null;
+  pushedAt: string | null;
+  createdAt: string;
+  repository: RepositoryRef | null;
+}
+
 export interface TaskComment {
   id: string;
   taskId: string;
@@ -94,6 +114,7 @@ export interface Task {
   status: string;
   priority: Priority;
   storyPoints: number;
+  archived: boolean;
   dueDate: string | null;
   description: string | null;
   projectId: string;
@@ -336,6 +357,7 @@ export class NexusClient {
       repositoryId?: string | null;
       blockedById?: string | null;
       labelIds?: string[];
+      archived?: boolean;
     },
   ): Promise<Task> {
     const { data } = await this.request<{ data: Task }>("PATCH", `/api/v1/tasks/${taskId}`, patch);
@@ -344,6 +366,11 @@ export class NexusClient {
 
   async listTaskComments(taskId: string): Promise<TaskComment[]> {
     const { data } = await this.request<{ data: TaskComment[] }>("GET", `/api/v1/tasks/${taskId}/comments`);
+    return data;
+  }
+
+  async listTaskGitActivity(taskId: string): Promise<GitActivity[]> {
+    const { data } = await this.request<{ data: GitActivity[] }>("GET", `/api/v1/tasks/${taskId}/git-activity`);
     return data;
   }
 
@@ -420,6 +447,20 @@ export class NexusClient {
     storyPoints?: number;
   }): Promise<Story> {
     const { data } = await this.request<{ data: Story }>("POST", "/api/v1/stories", input);
+    return data;
+  }
+
+  async updateStory(
+    storyId: string,
+    patch: {
+      name?: string;
+      description?: string | null;
+      priority?: Priority;
+      status?: string;
+      storyPoints?: number;
+    },
+  ): Promise<Story> {
+    const { data } = await this.request<{ data: Story }>("PATCH", `/api/v1/stories/${storyId}`, patch);
     return data;
   }
 
