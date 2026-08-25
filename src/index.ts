@@ -1,10 +1,36 @@
 #!/usr/bin/env node
+import { readFile } from "fs/promises";
+import { extname } from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { TokenStore } from "./auth/TokenStore.js";
 import { NexusClient, NotAuthenticatedError } from "./api/NexusClient.js";
 import { ProjectDetector } from "./workspace/ProjectDetector.js";
+
+// Small, deliberately non-exhaustive extension -> MIME map — covers what a
+// task attachment realistically is (screenshot, doc, archive). Anything else
+// falls back to application/octet-stream rather than pulling in a full
+// mime-types dependency for this one lookup.
+const MIME_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".pdf": "application/pdf",
+  ".txt": "text/plain",
+  ".md": "text/markdown",
+  ".json": "application/json",
+  ".csv": "text/csv",
+  ".zip": "application/zip",
+  ".log": "text/plain",
+};
+
+function guessMimeType(filePath: string): string {
+  return MIME_TYPES[extname(filePath).toLowerCase()] ?? "application/octet-stream";
+}
 
 const apiUrl = process.env.NEXUS_API_URL;
 if (!apiUrl) {
@@ -112,6 +138,24 @@ server.tool(
   },
 );
 
+server.tool(
+  "search_tasks",
+  "Find tasks by keyword — matches against name and description (case-insensitive substring), across the whole project, not just tasks assigned to you. Use this when you don't know a task's exact key. For 'my tasks' specifically, use list_my_tasks instead.",
+  {
+    query: z.string(),
+    projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo."),
+    status: z.string().optional(),
+  },
+  async ({ query, projectId, status }) => {
+    try {
+      const id = await resolveProjectId(projectId);
+      return textResult((await client.listTasks({ projectId: id, search: query, status })).data);
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
 server.tool("get_task", "Get full detail for one task by its internal id.", { taskId: z.string() }, async ({ taskId }) => {
   try {
     return textResult(await client.getTask(taskId));
@@ -197,6 +241,14 @@ server.tool(
   },
 );
 
+server.tool("get_epic", "Get full detail for one epic by its id.", { epicId: z.string() }, async ({ epicId }) => {
+  try {
+    return textResult(await client.getEpic(epicId));
+  } catch (err) {
+    return errorResult(err);
+  }
+});
+
 server.tool(
   "create_epic",
   "Create an epic — the top level of the hierarchy, above stories and tasks. Epics are normally infrequent/lead-planned; check list_epics first so you don't create a near-duplicate of one that already exists. code is optional — omit it to get the same auto-generated format the product UI uses (<last 4 chars of projectId>-E<seq>); codes are globally unique across all projects, so a manually chosen one must not collide with any existing epic.",
@@ -250,6 +302,14 @@ server.tool(
     }
   },
 );
+
+server.tool("get_story", "Get full detail for one story by its id.", { storyId: z.string() }, async ({ storyId }) => {
+  try {
+    return textResult(await client.getStory(storyId));
+  } catch (err) {
+    return errorResult(err);
+  }
+});
 
 server.tool(
   "create_story",
@@ -338,6 +398,7 @@ server.tool(
     storyId: z.string().optional().describe("Group this task with its siblings across repos — see list_stories/create_story."),
     repositoryId: z.string().optional().describe("Which repo this task is for — see get_current_repository."),
     blockedById: z.string().optional().describe("A task that must finish first."),
+    sprintId: z.string().optional().describe("See list_sprints."),
     labelIds: z.array(z.string()).optional().describe("See list_labels/create_label."),
   },
   async ({ projectId, ...rest }) => {
@@ -352,7 +413,7 @@ server.tool(
 
 server.tool(
   "update_task",
-  "Change any field on an existing task — name/description/priority/dueDate/storyPoints/archived, or story/repository/blocked-by/assignee/labels. Pass null for storyId/repositoryId/blockedById/assigneeId/dueDate/description to unset one, omit fields you don't want to change. labelIds is a full replace, not a diff — pass the complete set of label ids the task should end up with (use list_labels to see ids, get_task to see the task's current labelIds via taskLabels). To archive a mistaken/duplicate task, pass archived: true — pass archived: false to bring it back. Note: status changes go through update_task_status, not this tool.",
+  "Change any field on an existing task — name/description/priority/dueDate/storyPoints/archived, or story/repository/blocked-by/sprint/assignee/labels. Pass null for storyId/repositoryId/blockedById/sprintId/assigneeId/dueDate/description to unset one, omit fields you don't want to change. labelIds is a full replace, not a diff — pass the complete set of label ids the task should end up with (use list_labels to see ids, get_task to see the task's current labelIds via taskLabels). To archive a mistaken/duplicate task, pass archived: true — pass archived: false to bring it back. Note: status changes go through update_task_status, not this tool.",
   {
     taskId: z.string(),
     name: z.string().optional(),
@@ -363,27 +424,14 @@ server.tool(
     storyId: z.string().nullable().optional(),
     repositoryId: z.string().nullable().optional(),
     blockedById: z.string().nullable().optional(),
+    sprintId: z.string().nullable().optional().describe("See list_sprints."),
     assigneeId: z.string().nullable().optional().describe("See list_members."),
     labelIds: z.array(z.string()).optional().describe("Full replacement set — see list_labels."),
     archived: z.boolean().optional().describe("true to archive (soft-remove), false to restore."),
   },
-  async ({ taskId, name, description, priority, dueDate, storyPoints, storyId, repositoryId, blockedById, assigneeId, labelIds, archived }) => {
+  async ({ taskId, ...patch }) => {
     try {
-      return textResult(
-        await client.updateTask(taskId, {
-          name,
-          description,
-          priority,
-          dueDate,
-          storyPoints,
-          storyId,
-          repositoryId,
-          blockedById,
-          assigneeId,
-          labelIds,
-          archived,
-        }),
-      );
+      return textResult(await client.updateTask(taskId, patch));
     } catch (err) {
       return errorResult(err);
     }
@@ -434,6 +482,26 @@ server.tool(
 );
 
 server.tool(
+  "add_task_attachment",
+  "Attach a local file to a task (screenshot, doc, export) — reads the file from disk and uploads it. filePath must be a real, readable path on this machine. Capped at 10MB.",
+  {
+    taskId: z.string(),
+    filePath: z.string().describe("Absolute or cwd-relative path to the file to attach."),
+  },
+  async ({ taskId, filePath }) => {
+    try {
+      const buffer = await readFile(filePath);
+      const filename = filePath.split(/[\\/]/).pop() ?? filePath;
+      return textResult(
+        await client.addTaskAttachment(taskId, filename, guessMimeType(filePath), buffer.toString("base64")),
+      );
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
   "list_statuses",
   "List the workflow statuses available in a project — the exact `status` strings update_task_status accepts.",
   { projectId: z.string().optional() },
@@ -450,11 +518,57 @@ server.tool(
 
 server.tool(
   "update_task_status",
-  "Move a task to a new status by name (use list_statuses for exact names) — this is the hand-off signal other agents/people watch for.",
-  { taskId: z.string(), status: z.string() },
-  async ({ taskId, status }) => {
+  "Move a task to a new status by name (use list_statuses for exact names) — this is the hand-off signal other agents/people watch for. Pass reason to also leave a comment explaining the change in the same call (e.g. why it's Blocked) — equivalent to calling add_task_comment separately, just in one step.",
+  { taskId: z.string(), status: z.string(), reason: z.string().optional().describe("Also left as a comment on the task, e.g. why this task is now Blocked.") },
+  async ({ taskId, status, reason }) => {
     try {
-      return textResult(await client.updateTask(taskId, { status }));
+      const task = await client.updateTask(taskId, { status });
+      if (reason) await client.addTaskComment(taskId, reason);
+      return textResult(task);
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "list_task_assignees",
+  "List additional assignees/reviewers on a task, beyond the single primary assignee (see get_task's assignee field / update_task's assigneeId).",
+  { taskId: z.string() },
+  async ({ taskId }) => {
+    try {
+      return textResult(await client.listTaskAssignees(taskId));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "add_task_assignee",
+  "Add an additional assignee or reviewer to a task, on top of the single primary assignee (set separately via update_task's assigneeId). Defaults to role ASSIGNEE.",
+  {
+    taskId: z.string(),
+    memberId: z.string().describe("See list_members."),
+    role: z.enum(["ASSIGNEE", "REVIEWER"]).optional(),
+  },
+  async ({ taskId, memberId, role }) => {
+    try {
+      return textResult(await client.addTaskAssignee(taskId, memberId, role));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "remove_task_assignee",
+  "Remove an additional assignee/reviewer from a task. assigneeId is the row id from list_task_assignees/add_task_assignee, not a member id.",
+  { taskId: z.string(), assigneeId: z.string() },
+  async ({ taskId, assigneeId }) => {
+    try {
+      await client.removeTaskAssignee(taskId, assigneeId);
+      return textResult({ removed: true });
     } catch (err) {
       return errorResult(err);
     }

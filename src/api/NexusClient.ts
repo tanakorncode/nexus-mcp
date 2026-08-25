@@ -94,6 +94,17 @@ export interface GitActivity {
   repository: RepositoryRef | null;
 }
 
+export type TaskAssigneeRole = "ASSIGNEE" | "REVIEWER";
+
+export interface TaskAssignee {
+  id: string;
+  taskId: string;
+  memberId: string;
+  member: AssigneeRef | null;
+  role: TaskAssigneeRole;
+  createdAt: string;
+}
+
 export interface TaskComment {
   id: string;
   taskId: string;
@@ -332,6 +343,7 @@ export class NexusClient {
     assigneeId?: string;
     storyId?: string;
     repositoryId?: string;
+    search?: string;
     page?: number;
     perPage?: number;
   }): Promise<Paged<Task>> {
@@ -356,6 +368,7 @@ export class NexusClient {
       storyId?: string | null;
       repositoryId?: string | null;
       blockedById?: string | null;
+      sprintId?: string | null;
       labelIds?: string[];
       archived?: boolean;
     },
@@ -372,6 +385,37 @@ export class NexusClient {
   async listTaskGitActivity(taskId: string): Promise<GitActivity[]> {
     const { data } = await this.request<{ data: GitActivity[] }>("GET", `/api/v1/tasks/${taskId}/git-activity`);
     return data;
+  }
+
+  async addTaskAttachment(
+    taskId: string,
+    filename: string,
+    mimeType: string,
+    contentBase64: string,
+  ): Promise<AttachmentRef> {
+    const { data } = await this.request<{ data: AttachmentRef }>("POST", `/api/v1/tasks/${taskId}/attachments`, {
+      filename,
+      mimeType,
+      contentBase64,
+    });
+    return data;
+  }
+
+  async listTaskAssignees(taskId: string): Promise<TaskAssignee[]> {
+    const { data } = await this.request<{ data: TaskAssignee[] }>("GET", `/api/v1/tasks/${taskId}/assignees`);
+    return data;
+  }
+
+  async addTaskAssignee(taskId: string, memberId: string, role?: TaskAssigneeRole): Promise<TaskAssignee> {
+    const { data } = await this.request<{ data: TaskAssignee }>("POST", `/api/v1/tasks/${taskId}/assignees`, {
+      memberId,
+      role,
+    });
+    return data;
+  }
+
+  async removeTaskAssignee(taskId: string, assigneeId: string): Promise<void> {
+    await this.request<void>("DELETE", `/api/v1/tasks/${taskId}/assignees/${assigneeId}`);
   }
 
   async addTaskComment(taskId: string, content: string, parentId?: string): Promise<TaskComment> {
@@ -395,6 +439,7 @@ export class NexusClient {
     storyId?: string;
     repositoryId?: string;
     blockedById?: string;
+    sprintId?: string;
     labelIds?: string[];
   }): Promise<Task> {
     const { data } = await this.request<{ data: Task }>("POST", "/api/v1/tasks", input);
@@ -405,6 +450,11 @@ export class NexusClient {
 
   async listEpics(projectId?: string): Promise<Epic[]> {
     const { data } = await this.request<{ data: Epic[] }>("GET", `/api/v1/epics${this.qs({ projectId })}`);
+    return data;
+  }
+
+  async getEpic(epicId: string): Promise<Epic> {
+    const { data } = await this.request<{ data: Epic }>("GET", `/api/v1/epics/${epicId}`);
     return data;
   }
 
@@ -436,6 +486,11 @@ export class NexusClient {
 
   async listStories(epicId: string): Promise<Story[]> {
     const { data } = await this.request<{ data: Story[] }>("GET", `/api/v1/stories${this.qs({ epicId })}`);
+    return data;
+  }
+
+  async getStory(storyId: string): Promise<Story> {
+    const { data } = await this.request<{ data: Story }>("GET", `/api/v1/stories/${storyId}`);
     return data;
   }
 
