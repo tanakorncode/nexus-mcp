@@ -332,18 +332,66 @@ server.tool(
 
 server.tool(
   "update_task",
-  "Set or clear a task's story/repository/blocked-by/assignee/labels after creation. Pass null for storyId/repositoryId/blockedById/assigneeId to unset one, omit fields you don't want to change. labelIds is a full replace, not a diff — pass the complete set of label ids the task should end up with (use list_labels to see ids, get_task to see the task's current labelIds via taskLabels).",
+  "Change any field on an existing task — name/description/priority/dueDate/storyPoints, or story/repository/blocked-by/assignee/labels. Pass null for storyId/repositoryId/blockedById/assigneeId/dueDate/description to unset one, omit fields you don't want to change. labelIds is a full replace, not a diff — pass the complete set of label ids the task should end up with (use list_labels to see ids, get_task to see the task's current labelIds via taskLabels). Note: status changes go through update_task_status, not this tool.",
   {
     taskId: z.string(),
+    name: z.string().optional(),
+    description: z.string().nullable().optional(),
+    priority: z.enum(["LOW", "MEDIUM", "HIGH", "HIGHEST"]).optional(),
+    dueDate: z.string().nullable().optional().describe("ISO date string, or null to clear."),
+    storyPoints: z.number().optional(),
     storyId: z.string().nullable().optional(),
     repositoryId: z.string().nullable().optional(),
     blockedById: z.string().nullable().optional(),
     assigneeId: z.string().nullable().optional().describe("See list_members."),
     labelIds: z.array(z.string()).optional().describe("Full replacement set — see list_labels."),
   },
-  async ({ taskId, storyId, repositoryId, blockedById, assigneeId, labelIds }) => {
+  async ({ taskId, name, description, priority, dueDate, storyPoints, storyId, repositoryId, blockedById, assigneeId, labelIds }) => {
     try {
-      return textResult(await client.updateTask(taskId, { storyId, repositoryId, blockedById, assigneeId, labelIds }));
+      return textResult(
+        await client.updateTask(taskId, {
+          name,
+          description,
+          priority,
+          dueDate,
+          storyPoints,
+          storyId,
+          repositoryId,
+          blockedById,
+          assigneeId,
+          labelIds,
+        }),
+      );
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "list_task_comments",
+  "List comments on a task, oldest first — the persistent place to leave notes/questions/decisions tied to a task, instead of losing them when a chat session ends.",
+  { taskId: z.string() },
+  async ({ taskId }) => {
+    try {
+      return textResult(await client.listTaskComments(taskId));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "add_task_comment",
+  "Add a comment to a task — use this for anything that should stay attached to the task permanently (a decision, a question for a teammate, why an approach was chosen), rather than leaving it only in chat. Pass parentId to reply to an existing comment.",
+  {
+    taskId: z.string(),
+    content: z.string(),
+    parentId: z.string().optional().describe("Reply to this comment id, if threading a response."),
+  },
+  async ({ taskId, content, parentId }) => {
+    try {
+      return textResult(await client.addTaskComment(taskId, content, parentId));
     } catch (err) {
       return errorResult(err);
     }

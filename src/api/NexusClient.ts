@@ -74,6 +74,17 @@ export interface LabelRef {
   color: string;
 }
 
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId: string | null;
+  author: AssigneeRef | null;
+  content: string;
+  parentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Task {
   id: string;
   taskKey: string;
@@ -328,6 +339,19 @@ export class NexusClient {
     },
   ): Promise<Task> {
     const { data } = await this.request<{ data: Task }>("PATCH", `/api/v1/tasks/${taskId}`, patch);
+    return data;
+  }
+
+  async listTaskComments(taskId: string): Promise<TaskComment[]> {
+    const { data } = await this.request<{ data: TaskComment[] }>("GET", `/api/v1/tasks/${taskId}/comments`);
+    return data;
+  }
+
+  async addTaskComment(taskId: string, content: string, parentId?: string): Promise<TaskComment> {
+    const { data } = await this.request<{ data: TaskComment }>("POST", `/api/v1/tasks/${taskId}/comments`, {
+      content,
+      parentId,
+    });
     return data;
   }
 
