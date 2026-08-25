@@ -164,11 +164,12 @@ Read the skill files themselves for the full step-by-step — this README won't 
 | `create_story` | New story under an epic |
 | `list_labels` / `create_label` | Labels in a project / create a new one |
 | `create_task` | New task — `epicId` required; set `storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` at creation if known |
-| `update_task` | Change `storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` on an existing task (`null` unsets a field; `labelIds` is a full replace, not a diff) |
+| `update_task` | Change name/description/priority/dueDate/storyPoints/`storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` on an existing task (`null` unsets a field; `labelIds` is a full replace, not a diff) |
 
 **Hand-off**
 | Tool | Purpose |
 |---|---|
+| `list_task_comments` / `add_task_comment` | Persistent notes on a task (decisions, questions, hand-off context) — survives past the session, unlike chat. `parentId` threads a reply. |
 | `update_task_status` | Move a task to a new status by name — the signal the next person/agent watches for |
 
 ## Optional: scheduled task check (notification only)
@@ -188,6 +189,6 @@ This only checks; a person still has to open Claude Code and say "go" once notif
 
 ## Known limits
 
-- No comment support, no commit-linking — those routes only exist on the extension-only internal API, not `/api/v1/*`. Would need new `pm-system` routes to add.
+- No commit-linking via API — `GitActivity` (MR/branch/commit info) is populated by GitLab webhooks, not writable through `/api/v1/*`. Reading it isn't exposed either yet.
 - No attachment/embed *upload* via API (reading them works — `get_task` returns both) — attach Figma links/screenshots through the product UI.
 - Repo-scoped, story-scoped, and label-filtered queries only return results once someone actually sets `repositoryId`/`storyId`/`labelIds` on tasks — nothing is inferred automatically.

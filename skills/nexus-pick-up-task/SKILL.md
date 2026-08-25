@@ -21,7 +21,7 @@ Framework-agnostic *within* nexus-mcp projects — applies the same way whether 
 
 4. **Match this repo's own conventions.** Read this repo's `CLAUDE.md` before writing code — that's where the stack-specific rules live (folder structure, error handling, test conventions, etc.), not in this skill.
 
-5. **When genuinely ambiguous after 2–4** (no Figma/attachment, no comparable existing pattern in the repo) — stop and ask the person, don't guess and ship. There's no way to leave a comment back on the Nexus task yet (not in the public API), so the question goes to whoever is running this session, in chat.
+5. **When genuinely ambiguous after 2–4** (no Figma/attachment, no comparable existing pattern in the repo) — stop and ask, don't guess and ship. If someone's actively running this session, ask in chat. If not (a scheduled/unattended run, or the answer needs to persist for whoever picks this up next), use `add_task_comment` instead — it's the durable option that survives past this session, chat isn't.
 
 6. **Implement, following this repo's git conventions** (see the imported team conventions in this repo's `CLAUDE.md` for the commit format).
 
@@ -29,7 +29,7 @@ Framework-agnostic *within* nexus-mcp projects — applies the same way whether 
 
 8. **Open a PR/MR — never push directly to a protected branch (`main`/`develop`/whatever this repo protects).** This is the review checkpoint: a human looks at the diff before it lands, regardless of how confident the implementation felt. Don't merge it yourself even if you technically could.
 
-9. **Hand off.** Once the PR is open (or once your part is done and the next step belongs to someone else), call `update_task_status` with the status name that matches what's actually true (check `list_statuses` for the exact names this project uses — they're not always "Done", could be "In Review", "Ready for FE", etc.). This status change is the signal the next person or agent watches for — it's the only thing that crosses machines/accounts, so get it right rather than leaving it stale.
+9. **Hand off.** Once the PR is open (or once your part is done and the next step belongs to someone else), call `update_task_status` with the status name that matches what's actually true (check `list_statuses` for the exact names this project uses — they're not always "Done", could be "In Review", "Ready for FE", etc.). This status change is the signal the next person or agent watches for — it's the only thing that crosses machines/accounts, so get it right rather than leaving it stale. If there's context the status change alone doesn't carry (why an approach was chosen, a caveat for whoever picks this up), leave it as a comment via `add_task_comment` too — status is a signal, not a place for detail.
 
 ## What this skill does not do
 
