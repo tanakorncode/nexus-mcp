@@ -1,4 +1,4 @@
-const { app, Tray, Menu, BrowserWindow, ipcMain, dialog, nativeImage } = require("electron");
+const { app, Tray, Menu, BrowserWindow, ipcMain, dialog, nativeImage, Notification } = require("electron");
 const path = require("path");
 const store = require("./lib/store");
 const { ReconnectingClient } = require("./lib/ws-client");
@@ -110,6 +110,13 @@ function pushLine(job, line) {
   progressWindow?.webContents.send("job:line", { id: job.id, line });
 }
 
+function notify(title, body) {
+  if (!Notification.isSupported()) return;
+  const n = new Notification({ title, body });
+  n.on("click", () => openProgressWindow());
+  n.show();
+}
+
 function handleEvent(msg) {
   const prompt = summarize(msg.event, msg.payload);
   const settings = getSettings();
@@ -132,6 +139,9 @@ function handleEvent(msg) {
   progressWindow?.webContents.send("job:new", job);
   updateTrayTitle();
 
+  const taskLine = prompt.split("\n")[0];
+  notify("Nexus Agent — เริ่มทำงานใหม่", taskLine);
+
   runJob({
     command: settings.command,
     workDir,
@@ -142,6 +152,10 @@ function handleEvent(msg) {
       progressWindow?.webContents.send("job:done", { id: job.id, result });
       updateTrayTitle();
       history.appendJob(app.getPath("userData"), job);
+      notify(
+        result.ok ? "Nexus Agent — เสร็จแล้ว" : "Nexus Agent — ล้มเหลว",
+        taskLine,
+      );
     },
   });
 }
