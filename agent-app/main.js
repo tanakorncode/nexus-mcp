@@ -142,7 +142,7 @@ function handleEvent(msg) {
   const taskLine = prompt.split("\n")[0];
   notify("Nexus Agent — เริ่มทำงานใหม่", taskLine);
 
-  runJob({
+  const handle = runJob({
     command: settings.command,
     workDir,
     prompt,
@@ -152,12 +152,15 @@ function handleEvent(msg) {
       progressWindow?.webContents.send("job:done", { id: job.id, result });
       updateTrayTitle();
       history.appendJob(app.getPath("userData"), job);
-      notify(
-        result.ok ? "Nexus Agent — เสร็จแล้ว" : "Nexus Agent — ล้มเหลว",
-        taskLine,
-      );
+      const title = result.cancelled
+        ? "Nexus Agent — ยกเลิกแล้ว"
+        : result.ok
+          ? "Nexus Agent — เสร็จแล้ว"
+          : "Nexus Agent — ล้มเหลว";
+      notify(title, taskLine);
     },
   });
+  job.kill = handle.kill;
 }
 
 function reconnect() {
@@ -247,6 +250,12 @@ ipcMain.handle("settings:test", (_e, { command, workDir }) => {
   });
 });
 ipcMain.handle("jobs:recent", () => recentJobs);
+ipcMain.handle("jobs:cancel", (_e, id) => {
+  const job = recentJobs.find((j) => j.id === id);
+  if (!job || job.done !== null) return { ok: false };
+  job.kill?.();
+  return { ok: true };
+});
 ipcMain.handle("identity:resolve", async () => {
   const settings = getSettings();
   return resolveIdentity(settings.pmSystemUrl);

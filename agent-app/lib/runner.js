@@ -37,6 +37,8 @@ function runJob({ command, workDir, prompt, onLine, onDone }) {
   child.stdout.on("data", (d) => flush(d, false));
   child.stderr.on("data", (d) => flush(d, true));
 
+  let cancelled = false;
+
   child.on("error", (err) => {
     onLine(`[error] failed to start: ${err.message}`);
     onDone({ ok: false, error: err.message });
@@ -44,10 +46,20 @@ function runJob({ command, workDir, prompt, onLine, onDone }) {
 
   child.on("close", (code) => {
     if (buffer) onLine(buffer);
-    onDone({ ok: code === 0, exitCode: code });
+    if (cancelled) {
+      onLine("[cancelled by user]");
+      onDone({ ok: false, cancelled: true });
+    } else {
+      onDone({ ok: code === 0, exitCode: code });
+    }
   });
 
-  return { kill: () => child.kill() };
+  return {
+    kill: () => {
+      cancelled = true;
+      child.kill();
+    },
+  };
 }
 
 module.exports = { runJob };

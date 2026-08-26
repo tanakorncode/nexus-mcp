@@ -1,6 +1,7 @@
 const jobsEl = document.getElementById("jobs");
 const logEl = document.getElementById("log");
-const headerEl = document.getElementById("log-header");
+const headerTextEl = document.getElementById("log-header-text");
+const cancelBtn = document.getElementById("cancelBtn");
 
 const jobs = new Map(); // id -> { id, prompt, lines: [], done }
 let activeId = null;
@@ -43,10 +44,15 @@ function appendLogLine(line) {
 function renderLog() {
   const job = jobs.get(activeId);
   logEl.innerHTML = "";
-  headerEl.textContent = job ? job.prompt.replace(/\n/g, "  ·  ") : "";
+  headerTextEl.textContent = job ? job.prompt.replace(/\n/g, "  ·  ") : "";
+  cancelBtn.style.display = job && job.done === null ? "block" : "none";
   if (!job) return;
   for (const line of job.lines) appendLogLine(line);
 }
+
+cancelBtn.addEventListener("click", () => {
+  if (activeId) window.nexusAgent.cancelJob(activeId);
+});
 
 function upsert(job) {
   jobs.set(job.id, job);
@@ -74,10 +80,13 @@ window.nexusAgent.onJobDone(({ id, result }) => {
   job.done = result;
   renderJobList();
   if (id === activeId) {
+    cancelBtn.style.display = "none";
     appendLogLine(
-      result.ok
-        ? "\x1b[1m\x1b[32m✓ เสร็จแล้ว\x1b[0m"
-        : `\x1b[1m\x1b[31m✗ ล้มเหลว (${result.error ?? `exit code ${result.exitCode}`})\x1b[0m`,
+      result.cancelled
+        ? "\x1b[1m\x1b[33m✗ ยกเลิกแล้ว\x1b[0m"
+        : result.ok
+          ? "\x1b[1m\x1b[32m✓ เสร็จแล้ว\x1b[0m"
+          : `\x1b[1m\x1b[31m✗ ล้มเหลว (${result.error ?? `exit code ${result.exitCode}`})\x1b[0m`,
     );
   }
 });

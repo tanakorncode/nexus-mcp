@@ -28,7 +28,18 @@
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 
   #log-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  #log-header { padding: 8px 12px; border-bottom: 1px solid #30363d; color: #8b949e; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #log-header {
+    padding: 8px 12px; border-bottom: 1px solid #30363d; color: #8b949e;
+    font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: flex; align-items: center; gap: 10px;
+  }
+  #log-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  #cancelBtn {
+    flex-shrink: 0; display: none; font-family: inherit; font-size: 11px;
+    padding: 4px 10px; border-radius: 5px; cursor: pointer;
+    background: transparent; color: #f85149; border: 1px solid rgba(248,81,73,0.4);
+  }
+  #cancelBtn:hover { background: rgba(248,81,73,0.12); }
   #log {
     flex: 1; padding: 10px 12px; overflow-y: auto; overflow-x: auto;
     white-space: pre; font-family: "SF Mono", Menlo, Consolas, monospace;
@@ -47,7 +58,10 @@
   <div id="layout">
     <div id="jobs"></div>
     <div id="log-pane">
-      <div id="log-header"></div>
+      <div id="log-header">
+        <span id="log-header-text"></span>
+        <button id="cancelBtn">ยกเลิกงานนี้</button>
+      </div>
       <div id="log"><div id="empty">ยังไม่มีงานเข้ามา — จะขึ้นที่นี่ทันทีที่มี event</div></div>
     </div>
   </div>
