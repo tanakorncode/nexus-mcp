@@ -89,6 +89,11 @@
   #identityResult { font-size: 11.5px; margin-top: 7px; min-height: 14px; }
   .ok { color: var(--success); } .err { color: var(--danger); }
 
+  .config-banner {
+    background: rgba(210, 153, 34, 0.12); border: 1px solid rgba(210, 153, 34, 0.4);
+    color: #e3b341; border-radius: 6px; padding: 8px 12px;
+    margin-bottom: 10px; font-size: 11.5px; line-height: 1.5;
+  }
   .status-bar {
     display: flex; align-items: center; gap: 8px;
     background: var(--surface); border: 1px solid var(--border);
@@ -125,6 +130,8 @@
   <div id="app">
     <h1>Nexus Agent</h1>
     <div class="subtitle">ตั้งค่าครั้งเดียว แล้วปล่อยให้ทำงานเงียบๆ ใน tray</div>
+
+    <div id="configBanner" class="config-banner" style="display:none"></div>
 
     <div id="statusBar" class="status-bar">
       <span id="statusDot" class="status-dot"></span>

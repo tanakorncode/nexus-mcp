@@ -3,19 +3,29 @@ const $ = (id) => document.getElementById(id);
 let presets = {};
 let repoMap = [];
 
+// Purely about the socket connection itself — never about whether the
+// form is filled in (see #configBanner for that, a separate concern).
 const STATUS_LABELS = {
+  idle: "ยังไม่ได้เชื่อมต่อ",
   connecting: "กำลังเชื่อมต่อ…",
   connected: "เชื่อมต่อแล้ว",
   disconnected: "ขาดการเชื่อมต่อ — กำลังลองใหม่อัตโนมัติ",
   unauthorized: "secret หรือ memberId ไม่ถูกต้อง",
   error: "เชื่อมต่อ server ไม่สำเร็จ",
-  "not configured": "ยังตั้งค่าไม่ครบ (กรอกด้านล่างแล้วกด Save)",
   paused: "หยุดชั่วคราว (ปิด Enabled ไว้จาก tray menu)",
 };
 
-function renderStatus({ status, detail }) {
+function renderStatus({ status, detail, config }) {
   $("statusDot").className = "status-dot " + status.replace(/\s+/g, "-");
   $("statusText").textContent = (STATUS_LABELS[status] ?? status) + (detail ? ` — ${detail}` : "");
+
+  const banner = $("configBanner");
+  if (config && !config.complete) {
+    banner.textContent = `⚠ ยังกรอกไม่ครบ ยังไม่เริ่มเชื่อมต่อ — ขาด: ${config.missing.join(", ")}`;
+    banner.style.display = "block";
+  } else {
+    banner.style.display = "none";
+  }
 }
 
 $("openLogBtn").addEventListener("click", () => window.nexusAgent.openLog());

@@ -42,11 +42,20 @@ function trayIcon(status) {
   return nativeImage.createFromPath(path.join(__dirname, "assets", file));
 }
 
+// Deliberately separate from config completeness (see currentConfig()) —
+// "haven't filled in the form yet" and "filled it in but can't reach the
+// server" are different problems with different fixes, and showing them
+// as the same gray dot made that impossible to tell apart.
 function currentStatus() {
   const settings = getSettings();
-  if (!store.isConfigured(settings)) return "not configured";
+  if (!store.isConfigured(settings)) return "idle";
   if (!settings.enabled) return "paused";
   return connectionStatus;
+}
+
+function currentConfig() {
+  const missing = store.missingFields(getSettings());
+  return { complete: missing.length === 0, missing };
 }
 
 function updateTrayTitle() {
@@ -58,7 +67,11 @@ function updateTrayTitle() {
 }
 
 function broadcastStatus() {
-  settingsWindow?.webContents.send("status:update", { status: currentStatus(), detail: connectionDetail });
+  settingsWindow?.webContents.send("status:update", {
+    status: currentStatus(),
+    detail: connectionDetail,
+    config: currentConfig(),
+  });
 }
 
 function openSettingsWindow() {
@@ -137,9 +150,9 @@ function reconnect() {
   client?.stop();
   const settings = getSettings();
   if (!store.isConfigured(settings)) {
-    connectionStatus = "not configured";
+    connectionStatus = "idle";
     connectionDetail = "";
-    log.log("not connecting — settings incomplete (need memberId, secret, serverUrl, and at least one repo mapped)");
+    log.log(`not connecting — settings incomplete, missing: ${store.missingFields(settings).join(", ")}`);
     updateTrayTitle();
     broadcastStatus();
     return;
@@ -221,7 +234,7 @@ ipcMain.handle("identity:resolve", async () => {
   const settings = getSettings();
   return resolveIdentity(settings.pmSystemUrl);
 });
-ipcMain.handle("status:get", () => ({ status: currentStatus(), detail: connectionDetail }));
+ipcMain.handle("status:get", () => ({ status: currentStatus(), detail: connectionDetail, config: currentConfig() }));
 ipcMain.handle("log:open", () => {
   require("electron").shell.showItemInFolder(log.path());
 });
@@ -238,7 +251,7 @@ app.whenReady().then(() => {
     recentJobs.push({ id: entry.id, prompt: entry.prompt, lines: entry.lines, done: entry.done });
   }
 
-  tray = new Tray(trayIcon("not configured"));
+  tray = new Tray(trayIcon("idle"));
   buildAndSetMenu();
   tray.on("click", () => tray.popUpContextMenu());
 

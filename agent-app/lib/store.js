@@ -41,14 +41,21 @@ function save(userDataDir, settings) {
   fs.writeFileSync(storePath(userDataDir), JSON.stringify(settings, null, 2), "utf8");
 }
 
+// What's still missing before a connection can even be attempted — kept
+// separate from connection status itself (unconfigured vs. configured-
+// but-can't-reach-the-server are different problems with different fixes).
+function missingFields(settings) {
+  const missing = [];
+  if (!settings.serverUrl) missing.push("Server");
+  if (!settings.memberId) missing.push("Nexus member id");
+  if (!settings.secret) missing.push("Shared secret");
+  if (!settings.command) missing.push("Command");
+  if (!settings.repoMap?.length) missing.push("Repo mapping (อย่างน้อย 1 อัน)");
+  return missing;
+}
+
 function isConfigured(settings) {
-  return Boolean(
-    settings.serverUrl &&
-      settings.memberId &&
-      settings.secret &&
-      settings.command &&
-      settings.repoMap?.length > 0,
-  );
+  return missingFields(settings).length === 0;
 }
 
 // Which local folder to run in for a given event, based on which repo the
@@ -59,4 +66,4 @@ function resolveWorkDir(settings, repoName) {
   return match?.path ?? null;
 }
 
-module.exports = { load, save, isConfigured, resolveWorkDir, PRESETS, DEFAULTS };
+module.exports = { load, save, isConfigured, missingFields, resolveWorkDir, PRESETS, DEFAULTS };
