@@ -16,18 +16,34 @@ function dotClass(job) {
   return job.done.ok ? "ok" : "fail";
 }
 
+// job.id is a Date.now() string set at job creation — reuse it as the
+// timestamp rather than tracking a separate startedAt field.
+function jobTime(job, opts) {
+  const ms = Number(job.id);
+  if (!Number.isFinite(ms)) return "";
+  return new Date(ms).toLocaleString("th-TH", opts);
+}
+
 function renderJobList() {
   jobsEl.innerHTML = "";
   for (const job of [...jobs.values()].reverse()) {
     const div = document.createElement("div");
     div.className = "job" + (job.id === activeId ? " active" : "");
-    const title = document.createElement("span");
-    title.className = "title";
-    title.textContent = job.prompt.split("\n")[0].slice(0, 40);
+    div.title = jobTime(job, { dateStyle: "medium", timeStyle: "medium" });
     const dot = document.createElement("span");
     dot.className = `dot ${dotClass(job)}`;
+    const body = document.createElement("div");
+    body.className = "job-body";
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = job.prompt.split("\n")[0].slice(0, 40);
+    const time = document.createElement("div");
+    time.className = "time";
+    time.textContent = jobTime(job, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    body.appendChild(title);
+    body.appendChild(time);
     div.appendChild(dot);
-    div.appendChild(title);
+    div.appendChild(body);
     div.addEventListener("click", () => {
       activeId = job.id;
       renderJobList();
@@ -49,7 +65,9 @@ function appendLogLine(line) {
 function renderLog() {
   const job = jobs.get(activeId);
   logEl.innerHTML = "";
-  headerTextEl.textContent = job ? job.prompt.replace(/\n/g, "  ·  ") : "";
+  headerTextEl.textContent = job
+    ? `[${jobTime(job, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}]  ${job.prompt.replace(/\n/g, "  ·  ")}`
+    : "";
   cancelBtn.style.display = job && job.done === null ? "block" : "none";
   retryBtn.style.display = canRetry(job) ? "block" : "none";
   if (!job) return;
