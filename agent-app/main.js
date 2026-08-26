@@ -28,8 +28,17 @@ function saveSettings(next) {
   reconnect();
 }
 
-function trayIcon() {
-  return nativeImage.createFromPath(path.join(__dirname, "assets", "icon-16.png"));
+// The tray icon itself carries the status color — someone glancing at the
+// menu bar shouldn't have to open Settings to tell connected from broken.
+const STATUS_ICONS = {
+  connected: "icon-status-connected.png",
+  connecting: "icon-status-connecting.png",
+  unauthorized: "icon-status-error.png",
+};
+
+function trayIcon(status) {
+  const file = STATUS_ICONS[status] ?? "icon-status-idle.png";
+  return nativeImage.createFromPath(path.join(__dirname, "assets", file));
 }
 
 function currentStatus() {
@@ -41,8 +50,10 @@ function currentStatus() {
 
 function updateTrayTitle() {
   if (!tray) return;
+  const status = currentStatus();
   const badge = recentJobs.some((j) => j.done === null) ? " ●" : "";
-  tray.setToolTip(`Nexus Agent — ${currentStatus()}${badge}`);
+  tray.setToolTip(`Nexus Agent — ${status}${badge}`);
+  tray.setImage(trayIcon(status));
 }
 
 function broadcastStatus() {
@@ -225,7 +236,7 @@ app.whenReady().then(() => {
     recentJobs.push({ id: entry.id, prompt: entry.prompt, lines: entry.lines, done: entry.done });
   }
 
-  tray = new Tray(trayIcon());
+  tray = new Tray(trayIcon("not configured"));
   buildAndSetMenu();
   tray.on("click", () => tray.popUpContextMenu());
 
