@@ -13,7 +13,7 @@ function renderRepoTable() {
       <input type="text" placeholder="ชื่อ repo (ต้องตรงกับใน Nexus)" value="${row.repoName ?? ""}" data-field="repoName" />
       <input type="text" placeholder="/path/to/local/checkout" value="${row.path ?? ""}" data-field="path" />
       <button class="small" data-action="browse">เลือก…</button>
-      <button class="small" data-action="remove">ลบ</button>
+      <button class="small danger-ghost" data-action="remove">ลบ</button>
     `;
     div.querySelector('[data-field="repoName"]').addEventListener("input", (e) => {
       repoMap[i].repoName = e.target.value;

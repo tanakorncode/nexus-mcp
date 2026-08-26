@@ -4,65 +4,166 @@
 <meta charset="utf-8" />
 <title>Nexus Agent — Settings</title>
 <style>
-  body { font-family: -apple-system, Segoe UI, sans-serif; padding: 16px; font-size: 13px; color: #222; }
-  label { display: block; margin-top: 12px; font-weight: 600; }
-  .hint { color: #777; font-size: 11px; margin-top: 2px; }
-  input[type=text], select { width: 100%; box-sizing: border-box; padding: 6px; margin-top: 4px; font-size: 13px; }
-  .row { display: flex; gap: 6px; }
-  .row input { flex: 1; }
-  button { padding: 6px 12px; font-size: 13px; cursor: pointer; }
-  button.small { padding: 4px 8px; font-size: 12px; }
-  #testOutput { margin-top: 8px; background: #f5f5f5; padding: 8px; border-radius: 4px; max-height: 100px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 11px; display: none; }
-  .actions { margin-top: 20px; display: flex; justify-content: space-between; }
-  .status { font-size: 11px; margin-top: 4px; }
-  .ok { color: #16a34a; } .err { color: #dc2626; }
-  #identityResult { font-size: 12px; margin-top: 6px; }
-  #repoTable { margin-top: 6px; }
-  .repo-row { display: flex; gap: 6px; margin-bottom: 4px; }
-  .repo-row input { flex: 1; }
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --text-faint: #6e7681;
+    --accent: #58a6ff;
+    --accent-strong: #388bfd;
+    --success: #3fb950;
+    --danger: #f85149;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  #app { padding: 20px 22px 16px; }
+  h1 {
+    font-size: 15px; font-weight: 600; margin: 0 0 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  h1::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  }
+  .subtitle { color: var(--text-dim); font-size: 11.5px; margin-bottom: 18px; }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    display: block; font-size: 11.5px; font-weight: 600;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em;
+    margin-bottom: 6px;
+  }
+  .hint { color: var(--text-faint); font-size: 11px; margin-top: 5px; line-height: 1.4; }
+
+  input[type="text"], select {
+    width: 100%; box-sizing: border-box;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px;
+    padding: 7px 10px; font-size: 12.5px; font-family: inherit;
+    outline: none; transition: border-color 0.12s;
+  }
+  input[type="text"]:focus, select:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--text-faint); }
+  select { cursor: pointer; }
+
+  .row { display: flex; gap: 8px; align-items: stretch; }
+  .row input { flex: 1; min-width: 0; }
+
+  button {
+    font-family: inherit; font-size: 12.5px; font-weight: 500;
+    border-radius: 6px; padding: 7px 13px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+    transition: background 0.12s, border-color 0.12s;
+  }
+  button:hover { background: #262c36; border-color: #484f58; }
+  button.small { padding: 5px 10px; font-size: 11.5px; flex-shrink: 0; }
+  button.primary { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+  button.primary:hover { background: #4a94ff; }
+  button.danger-ghost { color: var(--danger); border-color: transparent; background: transparent; padding: 5px 8px; }
+  button.danger-ghost:hover { background: rgba(248,81,73,0.12); }
+
+  #repoTable { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .repo-row { display: flex; gap: 6px; align-items: center; }
+  .repo-row input { flex: 1; min-width: 0; }
+  .repo-row input[data-field="repoName"] { flex: 0 0 34%; }
+
+  #identityResult { font-size: 11.5px; margin-top: 7px; min-height: 14px; }
+  .ok { color: var(--success); } .err { color: var(--danger); }
+
+  .actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+  }
+
+  #testOutput {
+    margin-top: 8px; background: #010409; border: 1px solid var(--border);
+    padding: 9px 10px; border-radius: 6px; max-height: 110px; overflow-y: auto;
+    white-space: pre-wrap; font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px; color: var(--text-dim); display: none;
+  }
+  .status { font-size: 11.5px; margin-top: 6px; }
 </style>
 </head>
 <body>
-  <h2 style="margin-top:0">Nexus Agent</h2>
+  <div id="app">
+    <h1>Nexus Agent</h1>
+    <div class="subtitle">ตั้งค่าครั้งเดียว แล้วปล่อยให้ทำงานเงียบๆ ใน tray</div>
 
-  <label>Nexus member id</label>
-  <div class="row">
-    <input type="text" id="memberId" placeholder="กด \"ดึงอัตโนมัติ\" ด้านขวา หรือกรอกเอง" />
-    <button id="detectBtn" class="small">ดึงอัตโนมัติ</button>
+    <div class="section">
+      <div class="field">
+        <label>Nexus member id</label>
+        <div class="row">
+          <input type="text" id="memberId" placeholder="กด &quot;ดึงอัตโนมัติ&quot; ด้านขวา หรือกรอกเอง" />
+          <button id="detectBtn" class="small">ดึงอัตโนมัติ</button>
+        </div>
+        <div class="hint">อ่านจาก login ของ nexus-mcp บนเครื่องนี้ (ต้องรัน nexus-mcp-login มาก่อนอย่างน้อยหนึ่งครั้ง)</div>
+        <div id="identityResult"></div>
+      </div>
+      <div class="field">
+        <label>Shared secret</label>
+        <input type="text" id="secret" placeholder="ขอจากผู้ดูแล notify-server" />
+      </div>
+      <div class="field">
+        <label>Server</label>
+        <input type="text" id="serverUrl" placeholder="ws://host:port" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="field">
+        <label>AI ที่จะใช้</label>
+        <select id="preset"></select>
+      </div>
+      <div class="field">
+        <label>Command</label>
+        <input type="text" id="command" />
+        <div class="hint">{{prompt}} จะถูกแทนที่ด้วยรายละเอียดงานอัตโนมัติ</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <label>โฟลเดอร์โปรเจกต์ (ต่อ repo — มีได้หลายอัน)</label>
+      <div id="repoTable"></div>
+      <button id="addRepoBtn" class="small">+ เพิ่ม repo</button>
+    </div>
+
+    <div class="section">
+      <div class="field">
+        <label>เก็บประวัติ Activity ไว้กี่วัน</label>
+        <select id="historyRetentionDays">
+          <option value="1">1 วัน</option>
+          <option value="3">3 วัน</option>
+          <option value="7">7 วัน</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="testBtn">Test</button>
+      <button id="saveBtn" class="primary">Save</button>
+    </div>
+    <div id="testStatus" class="status"></div>
+    <pre id="testOutput"></pre>
   </div>
-  <div class="hint">อ่านจาก login ของ nexus-mcp บนเครื่องนี้ (ต้องรัน nexus-mcp-login มาก่อนอย่างน้อยหนึ่งครั้ง)</div>
-  <div id="identityResult"></div>
-
-  <label>Shared secret</label>
-  <input type="text" id="secret" placeholder="ขอจากผู้ดูแล notify-server" />
-
-  <label>Server</label>
-  <input type="text" id="serverUrl" placeholder="ws://host:port" />
-
-  <label>AI ที่จะใช้</label>
-  <select id="preset"></select>
-
-  <label>Command</label>
-  <input type="text" id="command" />
-  <div class="hint">{{prompt}} จะถูกแทนที่ด้วยรายละเอียดงานอัตโนมัติ</div>
-
-  <label>โฟลเดอร์โปรเจกต์ (ต่อ repo — มีได้หลายอัน)</label>
-  <div id="repoTable"></div>
-  <button id="addRepoBtn" class="small">+ เพิ่ม repo</button>
-
-  <label>เก็บประวัติ Activity ไว้กี่วัน</label>
-  <select id="historyRetentionDays">
-    <option value="1">1 วัน</option>
-    <option value="3">3 วัน</option>
-    <option value="7">7 วัน</option>
-  </select>
-
-  <div class="actions">
-    <button id="testBtn">Test</button>
-    <button id="saveBtn">Save</button>
-  </div>
-  <div id="testStatus" class="status"></div>
-  <pre id="testOutput"></pre>
 
   <script src="settings-renderer.js"></script>
 </body>
