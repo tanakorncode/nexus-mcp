@@ -8,6 +8,20 @@ const { resolveIdentity } = require("./lib/nexus-identity");
 const history = require("./lib/history");
 const log = require("./lib/log");
 
+// Running more than one instance means more than one WebSocket connects to
+// notify-server with the same memberId (it allows multiple sockets per
+// member on purpose, for multiple devices) — so a real event can land on
+// whichever instance happens to receive it, but recentJobs isn't shared
+// across instances, so a *different* instance's Activity window can show
+// nothing even though the job is genuinely running elsewhere. Hit this for
+// real (repeated npm start without Quit-ing the previous run first) —
+// requestSingleInstanceLock() returns false on every launch after the
+// first, so those just quit immediately instead of opening a second tray
+// icon silently competing for the same connection.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+}
+
 let tray = null;
 let settingsWindow = null;
 let progressWindow = null;
@@ -280,6 +294,14 @@ ipcMain.handle("identity:resolve", async () => {
 ipcMain.handle("status:get", () => ({ status: currentStatus(), detail: connectionDetail, config: currentConfig() }));
 ipcMain.handle("log:open", () => {
   require("electron").shell.showItemInFolder(log.path());
+});
+
+// Fires on the *first* (already-running) instance when a second launch
+// attempt is blocked by requestSingleInstanceLock() above — surface that
+// instead of the second launch just silently vanishing with no feedback.
+app.on("second-instance", () => {
+  log.log("blocked a second instance from launching — already running");
+  openSettingsWindow();
 });
 
 app.whenReady().then(() => {
