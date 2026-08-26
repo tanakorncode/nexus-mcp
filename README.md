@@ -151,22 +151,31 @@ Read the skill files themselves for the full step-by-step — this README won't 
 | `get_task` / `get_task_by_key` | Full task detail, by id or human key (e.g. `ALPHA-42`) — includes `story`, `repository`, `blockedBy`/`blocks`, `attachments`, `embeds` |
 | `get_current_task` | Resolve the task key from the current branch name and fetch its detail |
 | `list_story_tasks` | Sibling tasks under the same story — the "other half" of a cross-repo hand-off |
+| `search_tasks` | Find tasks by keyword across the whole project (name/description substring match) — use when you don't know the exact key |
 | `list_statuses` | Workflow statuses for a project — exact strings `update_task_status` accepts |
 | `list_sprints` / `list_members` | Sprints in a project / teammates sharing a project with you |
 
 **Authoring** (see `nexus-plan-work`)
 | Tool | Purpose |
 |---|---|
-| `list_epics` | Epics in a project |
+| `list_epics` / `get_epic` | Epics in a project / single epic detail |
 | `create_epic` | New epic — `code` auto-generates in the product's own format if omitted; confirm with the person first, epics are a bigger commitment than a task |
 | `update_epic` | Change name/description/priority/status/color on an epic — `code`/`projectId` aren't editable |
-| `list_stories` | Stories under an epic — check before creating a duplicate |
+| `list_stories` / `get_story` | Stories under an epic / single story detail — check before creating a duplicate |
 | `create_story` | New story under an epic |
 | `update_story` | Change name/description/priority/status/storyPoints on a story — `epicId` isn't editable |
 | `list_labels` / `create_label` | Labels in a project / create a new one |
-| `create_task` | New task — `epicId` required; set `storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` at creation if known |
-| `update_task` | Change name/description/priority/dueDate/storyPoints/archived/`storyId`/`repositoryId`/`blockedById`/`assigneeId`/`labelIds` on an existing task (`null` unsets a field; `labelIds` is a full replace, not a diff) — `archived: true`/`false` archives/restores instead of deleting |
+| `create_task` | New task — `epicId` required; set `storyId`/`repositoryId`/`blockedById`/`assigneeId`/`sprintId`/`labelIds` at creation if known |
+| `update_task` | Change name/description/priority/dueDate/storyPoints/archived/`storyId`/`repositoryId`/`blockedById`/`sprintId`/`assigneeId`/`labelIds` on an existing task (`null` unsets a field; `labelIds` is a full replace, not a diff) — `archived: true`/`false` archives/restores instead of deleting |
 | `list_task_git_activity` | Commits/MRs linked to a task, newest first — read-only, populated by GitLab webhooks |
+| `add_task_attachment` | Upload a local file (screenshot, export, doc — 10MB cap) to a task |
+
+**Reviewers / additional assignees**
+| Tool | Purpose |
+|---|---|
+| `list_task_assignees` | Additional assignees/reviewers on a task, beyond the single primary assignee |
+| `add_task_assignee` | Add someone as an additional assignee or reviewer (`role: "ASSIGNEE" \| "REVIEWER"`, defaults to `ASSIGNEE`) — needs a real `taskId`, so always a follow-up call after `create_task`, never the same call |
+| `remove_task_assignee` | Remove one — takes the assignee row id from `list_task_assignees`/`add_task_assignee`, not a member id |
 
 **Hand-off**
 | Tool | Purpose |
