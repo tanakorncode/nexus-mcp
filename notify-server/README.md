@@ -27,7 +27,7 @@ NOTIFY_SHARED_SECRET=<pick a secret, give it to every teammate's agent-app> \
 node server.mjs
 ```
 
-Or via Docker (same pattern as `relay/`):
+Or via Docker (standalone):
 
 ```bash
 docker build -t nexus-notify-server .
@@ -37,10 +37,22 @@ docker run -d -p 8092:8092 \
   nexus-notify-server
 ```
 
-Runs fine co-located with pm-system (same reasoning as `relay/`'s
-self-hosted path — no reason this needs to be internet-facing at all,
-since it only needs Redis and outbound-initiated connections from
-teammates' machines on the same network/VPN).
+**In practice, this runs as a service in pm-system's own `docker-compose.prod.yml`**
+(`nexus-notify-server`, assumes this repo is cloned as `../nexus-mcp` next to
+pm-system's) — deploy/update it the same way as `app`:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build nexus-notify-server
+```
+
+with `./notify-config/.env` (relative to where `docker-compose.prod.yml` lives)
+holding `REDIS_URL` and `NOTIFY_SHARED_SECRET`.
+
+Bound to all interfaces (`8092:8092`, not loopback-only) — unlike a purely
+internal service, teammates' own laptops on the office network/VPN need
+to reach this directly, not just pm-system on the same host. Doesn't need
+to be internet-facing beyond that, since this team works from the office
+network/VPN only (no remote/WFH access needed).
 
 ## Client protocol
 
