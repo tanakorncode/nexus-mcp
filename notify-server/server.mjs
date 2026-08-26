@@ -11,10 +11,15 @@
 
 import { WebSocketServer } from "ws";
 import Redis from "ioredis";
+import { jwtVerify } from "jose";
 
 const PORT = Number(process.env.PORT ?? 8092);
 const REDIS_URL = process.env.REDIS_URL;
-const SHARED_SECRET = process.env.NOTIFY_SHARED_SECRET;
+// Same signing secret pm-system uses for its Nexus OAuth JWTs (see
+// pm-system's src/lib/nexus/jwt.ts) — verified locally here rather than
+// calling back into pm-system on every connect, so this stays up even if
+// pm-system briefly isn't, and doesn't add a network hop per connection.
+const AUTH_SECRET = process.env.AUTH_SECRET;
 const CHANNEL = "nexus:events";
 const HEARTBEAT_MS = 30_000;
 
@@ -22,10 +27,11 @@ if (!REDIS_URL) {
   console.error("[notify-server] REDIS_URL env var is required");
   process.exit(1);
 }
-if (!SHARED_SECRET) {
-  console.error("[notify-server] NOTIFY_SHARED_SECRET env var is required");
+if (!AUTH_SECRET) {
+  console.error("[notify-server] AUTH_SECRET env var is required (same value as pm-system's)");
   process.exit(1);
 }
+const JWT_SECRET = new TextEncoder().encode(AUTH_SECRET);
 
 // memberId -> Set<WebSocket>. A person can have more than one device/reconnect.
 const clientsByMember = new Map();
@@ -86,14 +92,27 @@ redis.on("message", (_channel, raw) => {
   console.log(`[notify-server] ${body.event} -> ${[...targets].length} member(s) checked, delivered to whoever's connected`);
 });
 
+// Verifies the Bearer token pm-system issued on login (real per-person
+// OAuth JWT, not a client-claimed id) and returns the memberId it's for,
+// or null if missing/invalid/expired/wrong type — same failure handling
+// either way, so the caller doesn't need to distinguish.
+async function verifyMemberId(req) {
+  const auth = req.headers.authorization ?? "";
+  if (!auth.startsWith("Bearer ")) return null;
+  try {
+    const { payload } = await jwtVerify(auth.slice(7), JWT_SECRET);
+    if (payload.type !== "access") return null;
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 const wss = new WebSocketServer({ port: PORT });
 
-wss.on("connection", (ws, req) => {
-  const url = new URL(req.url, "http://localhost");
-  const memberId = url.searchParams.get("memberId");
-  const secret = url.searchParams.get("secret");
-
-  if (!memberId || secret !== SHARED_SECRET) {
+wss.on("connection", async (ws, req) => {
+  const memberId = await verifyMemberId(req);
+  if (!memberId) {
     ws.close(4001, "unauthorized");
     return;
   }

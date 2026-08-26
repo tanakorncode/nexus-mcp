@@ -23,7 +23,7 @@ whichever of them currently has a socket open.
 
 ```bash
 REDIS_URL=<same REDIS_URL pm-system uses> \
-NOTIFY_SHARED_SECRET=<pick a secret, give it to every teammate's agent-app> \
+AUTH_SECRET=<same AUTH_SECRET pm-system uses to sign its Nexus OAuth JWTs> \
 node server.mjs
 ```
 
@@ -33,7 +33,7 @@ Or via Docker (standalone):
 docker build -t nexus-notify-server .
 docker run -d -p 8092:8092 \
   -e REDIS_URL=<...> \
-  -e NOTIFY_SHARED_SECRET=<...> \
+  -e AUTH_SECRET=<...> \
   nexus-notify-server
 ```
 
@@ -46,7 +46,9 @@ docker compose -f docker-compose.prod.yml up -d --build nexus-notify-server
 ```
 
 with `./notify-config/.env` (relative to where `docker-compose.prod.yml` lives)
-holding `REDIS_URL` and `NOTIFY_SHARED_SECRET`.
+holding `REDIS_URL` and `AUTH_SECRET` (the exact same `AUTH_SECRET` pm-system's
+own `.env` uses — this server verifies pm-system's JWTs itself rather than
+calling back into pm-system on every connect).
 
 Bound to all interfaces (`8092:8092`, not loopback-only) — unlike a purely
 internal service, teammates' own laptops on the office network/VPN need
@@ -56,8 +58,16 @@ network/VPN only (no remote/WFH access needed).
 
 ## Client protocol
 
-Connect with `ws://<host>:8092?memberId=<nexus member id>&secret=<NOTIFY_SHARED_SECRET>`.
-Wrong or missing secret closes the connection immediately (code `4001`).
+Connect to `ws://<host>:8092` with an `Authorization: Bearer <access_token>`
+header, where the token is a Nexus OAuth JWT obtained the same way
+`nexus-mcp-login`'s browser flow gets one (`agent-app/lib/nexus-login.js`
+does the identical PKCE loopback flow against pm-system's
+`/api/auth/nexus/authorize` + `/token`). This server verifies the token's
+signature itself (see `AUTH_SECRET` above) and reads the member id straight
+out of it (`sub` claim) — the client never gets to just *claim* a memberId.
+Missing, invalid, expired, or wrong-type tokens close the connection
+immediately (code `4001`).
+
 Once connected, any event Redis carries where you're on `task.assignee` or
 `task.additionalAssignees` gets forwarded verbatim (same JSON shape pm-system
 published) — no server-side transformation.
@@ -71,9 +81,13 @@ A dead connection (laptop slept without a clean close) is detected via a
   offline when an event fired, it's gone; the person just doesn't get
   notified until the next thing happens. Acceptable for this team's scale;
   revisit if it becomes a real problem.
-- One shared secret for every teammate, not per-person tokens — identity
-  is just whatever `memberId` the client claims. Fine on a trusted
-  internal network; would need real per-person auth before ever exposing
-  this beyond that.
-- `NOTIFY_SHARED_SECRET` and `REDIS_URL` are both plain env vars — same
-  handling as pm-system's own secrets, nothing extra here.
+- No revocation check beyond expiry — a JWT verified here is trusted for
+  its full 1-hour lifetime even if the person's pm-system session was
+  revoked in the meantime (their *next* login/refresh would fail, but an
+  already-issued access token isn't checked against that). Acceptable
+  given the short TTL; would need an introspection call back to pm-system
+  to close that gap.
+- `AUTH_SECRET` and `REDIS_URL` are both plain env vars — same handling as
+  pm-system's own secrets, nothing extra here. `AUTH_SECRET` in particular
+  is now shared with pm-system (this server verifies pm-system's JWTs with
+  it), so rotating it means updating both places together.

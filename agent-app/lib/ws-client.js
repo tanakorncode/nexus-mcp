@@ -4,10 +4,12 @@ const WebSocket = require("ws");
 // backoff on any drop (network blip, laptop sleep/wake, server restart).
 // Never gives up — this is meant to run for the lifetime of the app.
 class ReconnectingClient {
-  constructor({ url, memberId, secret, onEvent, onStatus }) {
+  // getToken: async () => { accessToken, user } | { needsLogin: true } —
+  // called fresh on every (re)connect attempt so a token refreshed (or a
+  // login completed) since the last attempt is always picked up.
+  constructor({ url, getToken, onEvent, onStatus }) {
     this.url = url;
-    this.memberId = memberId;
-    this.secret = secret;
+    this.getToken = getToken;
     this.onEvent = onEvent;
     this.onStatus = onStatus ?? (() => {});
     this.ws = null;
@@ -26,12 +28,25 @@ class ReconnectingClient {
     this.ws?.close();
   }
 
-  _connect() {
+  async _connect() {
     if (this.stopped) return;
 
-    const url = `${this.url}?memberId=${encodeURIComponent(this.memberId)}&secret=${encodeURIComponent(this.secret)}`;
     this.onStatus("connecting");
-    const ws = new WebSocket(url);
+    const auth = await this.getToken();
+    if (this.stopped) return;
+    if (auth.needsLogin) {
+      // Not logged in (or the refresh token was itself revoked/expired) —
+      // retrying on a timer won't fix this, only the person logging in
+      // will. Surfaced the same way a bad secret used to be.
+      this.onStatus("unauthorized", "ยังไม่ได้เข้าสู่ระบบ — เปิด Settings แล้วกด เข้าสู่ระบบ");
+      return;
+    }
+
+    // The `ws` package (unlike a browser's WebSocket) lets a client set
+    // arbitrary headers on the upgrade request — notify-server reads this
+    // instead of a memberId/secret query pair, and derives who's connecting
+    // from the verified token itself rather than trusting a client-claimed id.
+    const ws = new WebSocket(this.url, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
     this.ws = ws;
     let lastErrorDetail = null;
 
@@ -51,8 +66,10 @@ class ReconnectingClient {
 
     ws.on("close", (code) => {
       if (code === 4001) {
-        // Bad secret/memberId — retrying won't help until settings change.
-        this.onStatus("unauthorized");
+        // Token rejected even though we just fetched/refreshed it — e.g.
+        // revoked server-side. Retrying on a timer won't help; needs a
+        // fresh login.
+        this.onStatus("unauthorized", "เข้าสู่ระบบไม่ผ่าน — ลองเข้าสู่ระบบใหม่จาก Settings");
         return;
       }
       // A real connection failure (refused, DNS, timeout) fires "error"

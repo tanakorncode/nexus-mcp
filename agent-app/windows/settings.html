@@ -86,7 +86,6 @@
   .repo-row input { flex: 1; min-width: 0; }
   .repo-row input[data-field="repoName"] { flex: 0 0 34%; }
 
-  #identityResult { font-size: 11.5px; margin-top: 7px; min-height: 14px; }
   .ok { color: var(--success); } .err { color: var(--danger); }
 
   .config-banner {
@@ -136,17 +135,13 @@
 
     <div class="section">
       <div class="field">
-        <label>Nexus member id</label>
-        <div class="row">
-          <input type="text" id="memberId" placeholder="กด &quot;ดึงอัตโนมัติ&quot; ด้านขวา หรือกรอกเอง" />
-          <button id="detectBtn" class="small">ดึงอัตโนมัติ</button>
+        <label>บัญชี Nexus</label>
+        <div class="row" style="align-items:center;">
+          <span id="loginStatusText" class="status-text-inline">กำลังเช็ค…</span>
+          <button id="loginBtn" class="small">เข้าสู่ระบบ</button>
+          <button id="logoutBtn" class="small danger-ghost" style="display:none">ออกจากระบบ</button>
         </div>
-        <div class="hint">อ่านจาก login ของ nexus-mcp บนเครื่องนี้ (ต้องรัน nexus-mcp-login มาก่อนอย่างน้อยหนึ่งครั้ง)</div>
-        <div id="identityResult"></div>
-      </div>
-      <div class="field">
-        <label>Shared secret</label>
-        <input type="text" id="secret" placeholder="ขอจากผู้ดูแล notify-server" />
+        <div class="hint">เปิด browser ให้ login เข้า Nexus — ถ้าเคย login ผ่าน nexus-mcp-login ไว้แล้วจะเข้าระบบให้อัตโนมัติ ไม่ต้อง login ซ้ำ</div>
       </div>
       <div class="field">
         <label class="label-with-status">

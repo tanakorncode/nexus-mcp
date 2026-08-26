@@ -11,9 +11,6 @@ const PRESETS = {
 const DEFAULTS = {
   serverUrl: "ws://27.254.62.17:8092",
   pmSystemUrl: "http://27.254.62.17:8090",
-  memberId: "",
-  memberName: "",
-  secret: "",
   preset: "Claude Code",
   command: PRESETS["Claude Code"],
   // Which local folder to work in depends on which repo the task belongs
@@ -47,11 +44,13 @@ function save(userDataDir, settings) {
 // socket on repoMap too meant "no repo mapped yet" looked identical to
 // "can't reach the server", which is a different problem with a different
 // fix — this was a real bug, not a design nuance.
+//
+// Being logged in (a valid token in the OS keychain) is a separate check —
+// it lives outside settings.json entirely, in nexus-login.js — so it's not
+// part of this list even though the socket also needs it.
 function missingConnectionFields(settings) {
   const missing = [];
   if (!settings.serverUrl) missing.push("Server");
-  if (!settings.memberId) missing.push("Nexus member id");
-  if (!settings.secret) missing.push("Shared secret");
   return missing;
 }
 

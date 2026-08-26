@@ -10,7 +10,7 @@ const STATUS_LABELS = {
   connecting: "กำลังเชื่อมต่อ…",
   connected: "เชื่อมต่อแล้ว",
   disconnected: "ขาดการเชื่อมต่อ — กำลังลองใหม่อัตโนมัติ",
-  unauthorized: "secret หรือ memberId ไม่ถูกต้อง",
+  unauthorized: "เข้าสู่ระบบไม่สำเร็จ",
   error: "เชื่อมต่อ server ไม่สำเร็จ",
   paused: "หยุดชั่วคราว (ปิด Enabled ไว้จาก tray menu)",
 };
@@ -70,20 +70,41 @@ $("addRepoBtn").addEventListener("click", () => {
   renderRepoTable();
 });
 
-$("detectBtn").addEventListener("click", async () => {
-  const result = $("identityResult");
-  result.textContent = "กำลังค้นหา…";
-  result.className = "";
-  const identity = await window.nexusAgent.resolveIdentity();
-  if (identity.error) {
-    result.textContent = `✗ ${identity.error}`;
-    result.className = "err";
+function renderAuthStatus(user) {
+  if (user) {
+    $("loginStatusText").textContent = `เข้าสู่ระบบเป็น ${user.name} (${user.email})`;
+    $("loginBtn").style.display = "none";
+    $("logoutBtn").style.display = "";
+  } else {
+    $("loginStatusText").textContent = "ยังไม่ได้เข้าสู่ระบบ";
+    $("loginBtn").style.display = "";
+    $("logoutBtn").style.display = "none";
+  }
+}
+
+async function refreshAuthStatus() {
+  const { user } = await window.nexusAgent.getAuthStatus();
+  renderAuthStatus(user);
+}
+
+$("loginBtn").addEventListener("click", async () => {
+  $("loginStatusText").textContent = "กำลังเปิด browser ให้เข้าสู่ระบบ…";
+  $("loginBtn").disabled = true;
+  const result = await window.nexusAgent.login();
+  $("loginBtn").disabled = false;
+  if (!result.ok) {
+    $("loginStatusText").textContent = `✗ ${result.error}`;
     return;
   }
-  $("memberId").value = identity.memberId;
-  result.textContent = `✓ พบแล้ว: ${identity.name} (${identity.email})`;
-  result.className = "ok";
+  renderAuthStatus(result.user);
 });
+
+$("logoutBtn").addEventListener("click", async () => {
+  await window.nexusAgent.logout();
+  renderAuthStatus(null);
+});
+
+refreshAuthStatus();
 
 async function init() {
   presets = await window.nexusAgent.getPresets();
@@ -97,8 +118,6 @@ async function init() {
 
   const settings = await window.nexusAgent.getSettings();
   $("serverUrl").value = settings.serverUrl;
-  $("memberId").value = settings.memberId;
-  $("secret").value = settings.secret;
   $("preset").value = settings.preset;
   $("command").value = settings.command;
   $("historyRetentionDays").value = String(settings.historyRetentionDays ?? 7);
@@ -143,8 +162,6 @@ $("saveBtn").addEventListener("click", async () => {
   const saved = await window.nexusAgent.saveSettings({
     ...current,
     serverUrl: $("serverUrl").value.trim(),
-    memberId: $("memberId").value.trim(),
-    secret: $("secret").value.trim(),
     preset: $("preset").value,
     command: $("command").value.trim(),
     historyRetentionDays: Number($("historyRetentionDays").value),

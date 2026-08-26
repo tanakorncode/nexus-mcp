@@ -4,7 +4,7 @@ const store = require("./lib/store");
 const { ReconnectingClient } = require("./lib/ws-client");
 const { summarize } = require("./lib/summarize");
 const { runJob } = require("./lib/runner");
-const { resolveIdentity } = require("./lib/nexus-identity");
+const nexusLogin = require("./lib/nexus-login");
 const history = require("./lib/history");
 const log = require("./lib/log");
 
@@ -203,19 +203,16 @@ function reconnect() {
     return;
   }
   if (!store.isConfigured(settings)) {
-    log.log(`connecting anyway despite incomplete work config (${store.missingFields(settings).join(", ")}) — socket only needs server/memberId/secret, events just won't have anywhere to route yet`);
+    log.log(`connecting anyway despite incomplete work config (${store.missingFields(settings).join(", ")}) — socket only needs server + login, events just won't have anywhere to route yet`);
   }
-  log.log(`connecting to ${settings.serverUrl} as memberId=${settings.memberId}`);
+  log.log(`connecting to ${settings.serverUrl}`);
   client = new ReconnectingClient({
     url: settings.serverUrl,
-    memberId: settings.memberId,
-    secret: settings.secret,
+    getToken: () => nexusLogin.getValidAccessToken(settings.pmSystemUrl),
     onEvent: handleEvent,
     onStatus: (status, detail) => {
       connectionStatus = status;
-      if (status === "unauthorized") {
-        connectionDetail = "Server rejected memberId/secret — check both match what notify-server expects";
-      } else if (status === "error") {
+      if (status === "unauthorized" || status === "error") {
         connectionDetail = detail ?? "unknown error";
       } else {
         connectionDetail = "";
@@ -293,9 +290,17 @@ ipcMain.handle("jobs:retry", (_e, id) => {
   const newJob = startJob(job.prompt, job.workDir);
   return { ok: true, id: newJob.id };
 });
-ipcMain.handle("identity:resolve", async () => {
+ipcMain.handle("auth:status", () => ({ user: nexusLogin.currentUser() }));
+ipcMain.handle("auth:login", async () => {
   const settings = getSettings();
-  return resolveIdentity(settings.pmSystemUrl);
+  const result = await nexusLogin.login(settings.pmSystemUrl);
+  if (result.ok) reconnect(); // a login while disconnected/unauthorized should start using it immediately
+  return result;
+});
+ipcMain.handle("auth:logout", () => {
+  nexusLogin.logout();
+  reconnect(); // drops the socket now that getValidAccessToken() will return needsLogin
+  return { ok: true };
 });
 ipcMain.handle("status:get", () => ({ status: currentStatus(), detail: connectionDetail, config: currentConfig() }));
 ipcMain.handle("log:open", () => {
@@ -327,7 +332,11 @@ app.whenReady().then(() => {
   tray.on("click", () => tray.popUpContextMenu());
 
   const settings = getSettings();
-  if (!store.canConnect(settings)) {
+  // canConnect() only covers serverUrl now — being logged in is a separate,
+  // keychain-backed check, but a fresh install (never logged in) needs the
+  // same "open Settings so they can act" nudge, or it'd just sit silently
+  // showing "unauthorized" in the tray with nothing pointing at why.
+  if (!store.canConnect(settings) || !nexusLogin.currentUser()) {
     openSettingsWindow();
   } else {
     // Connects even if repoMap/command aren't set yet — those only affect
