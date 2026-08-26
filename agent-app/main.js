@@ -28,7 +28,11 @@ let progressWindow = null;
 let client = null;
 let connectionStatus = "disconnected";
 let connectionDetail = "";
-const recentJobs = []; // { id, prompt, lines: [], done: null }
+const recentJobs = []; // { id, prompt, lines: [], done: null } — plain data only, sent over IPC as-is
+// kill() handles live here, NOT on the job objects — functions can't cross
+// IPC (Electron's structured clone throws "An object could not be cloned"
+// the moment anything holding one gets sent, e.g. jobs:recent's response).
+const jobKillHandles = new Map();
 
 function getSettings() {
   return store.load(app.getPath("userData"));
@@ -151,6 +155,7 @@ function startJob(prompt, workDir) {
     onLine: (line) => pushLine(job, line),
     onDone: (result) => {
       job.done = result;
+      jobKillHandles.delete(job.id);
       progressWindow?.webContents.send("job:done", { id: job.id, result });
       updateTrayTitle();
       history.appendJob(app.getPath("userData"), job);
@@ -162,7 +167,7 @@ function startJob(prompt, workDir) {
       notify(title, taskLine);
     },
   });
-  job.kill = handle.kill;
+  jobKillHandles.set(job.id, handle.kill);
   return job;
 }
 
@@ -275,7 +280,7 @@ ipcMain.handle("jobs:recent", () => recentJobs);
 ipcMain.handle("jobs:cancel", (_e, id) => {
   const job = recentJobs.find((j) => j.id === id);
   if (!job || job.done !== null) return { ok: false };
-  job.kill?.();
+  jobKillHandles.get(id)?.();
   return { ok: true };
 });
 ipcMain.handle("jobs:retry", (_e, id) => {

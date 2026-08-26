@@ -81,6 +81,12 @@ function upsert(job) {
 
 window.nexusAgent.getRecentJobs().then((recent) => {
   for (const job of recent) upsert(job);
+}).catch((err) => {
+  // Silently swallowing this once already hid a real bug (a
+  // non-cloneable value in a job object made the whole IPC call reject,
+  // and this window just showed the empty state forever with zero
+  // indication anything was wrong).
+  document.getElementById("empty").textContent = `โหลดรายการงานไม่สำเร็จ: ${err.message}`;
 });
 
 window.nexusAgent.onJobNew((job) => upsert(job));
