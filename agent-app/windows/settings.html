@@ -96,12 +96,12 @@
     font-size: 12px;
   }
   .status-dot {
-    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-    background: var(--text-faint);
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    background: #9198a1; border: 1px solid #c9d1d9;
   }
-  .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
-  .status-dot.connecting { background: #d29922; animation: statusPulse 1.2s infinite; }
-  .status-dot.error, .status-dot.unauthorized { background: var(--danger); }
+  .status-dot.connected { background: var(--success); border-color: var(--success); box-shadow: 0 0 6px var(--success); }
+  .status-dot.connecting { background: #d29922; border-color: #d29922; animation: statusPulse 1.2s infinite; }
+  .status-dot.error, .status-dot.unauthorized { background: var(--danger); border-color: var(--danger); box-shadow: 0 0 6px var(--danger); }
   @keyframes statusPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
   #statusText { flex: 1; color: var(--text-dim); }
   .ghost-link { background: transparent; border-color: transparent; color: var(--accent); padding: 3px 6px; }
