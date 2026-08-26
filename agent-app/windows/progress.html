@@ -40,6 +40,12 @@
     background: transparent; color: #f85149; border: 1px solid rgba(248,81,73,0.4);
   }
   #cancelBtn:hover { background: rgba(248,81,73,0.12); }
+  #retryBtn {
+    flex-shrink: 0; display: none; font-family: inherit; font-size: 11px;
+    padding: 4px 10px; border-radius: 5px; cursor: pointer;
+    background: transparent; color: #58a6ff; border: 1px solid rgba(88,166,255,0.4);
+  }
+  #retryBtn:hover { background: rgba(88,166,255,0.12); }
   #log {
     flex: 1; padding: 10px 12px; overflow-y: auto; overflow-x: auto;
     white-space: pre; font-family: "SF Mono", Menlo, Consolas, monospace;
@@ -60,6 +66,7 @@
     <div id="log-pane">
       <div id="log-header">
         <span id="log-header-text"></span>
+        <button id="retryBtn">รันใหม่</button>
         <button id="cancelBtn">ยกเลิกงานนี้</button>
       </div>
       <div id="log"><div id="empty">ยังไม่มีงานเข้ามา — จะขึ้นที่นี่ทันทีที่มี event</div></div>

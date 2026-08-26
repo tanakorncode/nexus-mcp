@@ -12,6 +12,7 @@ function appendJob(userDataDir, job) {
   const line = JSON.stringify({
     id: job.id,
     prompt: job.prompt,
+    workDir: job.workDir,
     lines: job.lines,
     done: job.done,
     finishedAt: Date.now(),

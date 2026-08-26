@@ -117,23 +117,11 @@ function notify(title, body) {
   n.show();
 }
 
-function handleEvent(msg) {
-  const prompt = summarize(msg.event, msg.payload);
+// Shared by both a real Nexus event (handleEvent) and a manual re-run of a
+// past job (jobs:retry IPC) — same job lifecycle either way.
+function startJob(prompt, workDir) {
   const settings = getSettings();
-  if (!settings.enabled) {
-    log.log(`event received but agent is paused, skipping: ${msg.event}`);
-    return;
-  }
-
-  const repoName = msg.payload?.task?.repository?.name ?? null;
-  const workDir = store.resolveWorkDir(settings, repoName);
-  if (!workDir) {
-    log.log(`event for repo "${repoName ?? "(none)"}" has no local folder mapped, skipping: ${msg.event}`);
-    return;
-  }
-
-  log.log(`${msg.event} matched repo "${repoName}" -> running in ${workDir}`);
-  const job = { id: `${Date.now()}`, prompt, lines: [], done: null };
+  const job = { id: `${Date.now()}`, prompt, workDir, lines: [], done: null };
   recentJobs.unshift(job);
   if (recentJobs.length > 20) recentJobs.pop();
   progressWindow?.webContents.send("job:new", job);
@@ -161,6 +149,26 @@ function handleEvent(msg) {
     },
   });
   job.kill = handle.kill;
+  return job;
+}
+
+function handleEvent(msg) {
+  const prompt = summarize(msg.event, msg.payload);
+  const settings = getSettings();
+  if (!settings.enabled) {
+    log.log(`event received but agent is paused, skipping: ${msg.event}`);
+    return;
+  }
+
+  const repoName = msg.payload?.task?.repository?.name ?? null;
+  const workDir = store.resolveWorkDir(settings, repoName);
+  if (!workDir) {
+    log.log(`event for repo "${repoName ?? "(none)"}" has no local folder mapped, skipping: ${msg.event}`);
+    return;
+  }
+
+  log.log(`${msg.event} matched repo "${repoName}" -> running in ${workDir}`);
+  startJob(prompt, workDir);
 }
 
 function reconnect() {
@@ -256,6 +264,15 @@ ipcMain.handle("jobs:cancel", (_e, id) => {
   job.kill?.();
   return { ok: true };
 });
+ipcMain.handle("jobs:retry", (_e, id) => {
+  const job = recentJobs.find((j) => j.id === id);
+  // Only makes sense for a job that's actually finished, and only
+  // possible if we know which folder it ran in — jobs persisted before
+  // history.js started saving workDir won't have one.
+  if (!job || job.done === null || !job.workDir) return { ok: false };
+  const newJob = startJob(job.prompt, job.workDir);
+  return { ok: true, id: newJob.id };
+});
 ipcMain.handle("identity:resolve", async () => {
   const settings = getSettings();
   return resolveIdentity(settings.pmSystemUrl);
@@ -274,7 +291,7 @@ app.whenReady().then(() => {
   const pastJobs = history.loadHistory(app.getPath("userData"), settingsAtStartup.historyRetentionDays);
   // Newest first, matching recentJobs' own ordering (unshift on new jobs).
   for (const entry of pastJobs.slice().reverse()) {
-    recentJobs.push({ id: entry.id, prompt: entry.prompt, lines: entry.lines, done: entry.done });
+    recentJobs.push({ id: entry.id, prompt: entry.prompt, workDir: entry.workDir, lines: entry.lines, done: entry.done });
   }
 
   tray = new Tray(trayIcon("idle"));

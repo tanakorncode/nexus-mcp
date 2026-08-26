@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("nexusAgent", {
   resolveIdentity: () => ipcRenderer.invoke("identity:resolve"),
   getRecentJobs: () => ipcRenderer.invoke("jobs:recent"),
   cancelJob: (id) => ipcRenderer.invoke("jobs:cancel", id),
+  retryJob: (id) => ipcRenderer.invoke("jobs:retry", id),
   getStatus: () => ipcRenderer.invoke("status:get"),
   onStatusUpdate: (cb) => ipcRenderer.on("status:update", (_e, data) => cb(data)),
   openLog: () => ipcRenderer.invoke("log:open"),

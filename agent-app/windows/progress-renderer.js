@@ -2,6 +2,11 @@ const jobsEl = document.getElementById("jobs");
 const logEl = document.getElementById("log");
 const headerTextEl = document.getElementById("log-header-text");
 const cancelBtn = document.getElementById("cancelBtn");
+const retryBtn = document.getElementById("retryBtn");
+
+function canRetry(job) {
+  return job && job.done !== null && !job.done.ok && job.workDir;
+}
 
 const jobs = new Map(); // id -> { id, prompt, lines: [], done }
 let activeId = null;
@@ -46,12 +51,25 @@ function renderLog() {
   logEl.innerHTML = "";
   headerTextEl.textContent = job ? job.prompt.replace(/\n/g, "  ·  ") : "";
   cancelBtn.style.display = job && job.done === null ? "block" : "none";
+  retryBtn.style.display = canRetry(job) ? "block" : "none";
   if (!job) return;
   for (const line of job.lines) appendLogLine(line);
 }
 
 cancelBtn.addEventListener("click", () => {
   if (activeId) window.nexusAgent.cancelJob(activeId);
+});
+
+retryBtn.addEventListener("click", async () => {
+  if (!activeId) return;
+  const result = await window.nexusAgent.retryJob(activeId);
+  // Switch to watching the new attempt live, rather than leaving the old
+  // (failed/cancelled) one showing — retrying is a deliberate "watch this
+  // again" action, unlike a background event arriving while you're
+  // looking at something else.
+  if (result.ok && result.id) {
+    activeId = result.id;
+  }
 });
 
 function upsert(job) {
@@ -81,6 +99,7 @@ window.nexusAgent.onJobDone(({ id, result }) => {
   renderJobList();
   if (id === activeId) {
     cancelBtn.style.display = "none";
+    retryBtn.style.display = canRetry(job) ? "block" : "none";
     appendLogLine(
       result.cancelled
         ? "\x1b[1m\x1b[33m✗ ยกเลิกแล้ว\x1b[0m"
