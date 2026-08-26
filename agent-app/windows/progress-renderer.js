@@ -87,6 +87,13 @@ retryBtn.addEventListener("click", async () => {
   // looking at something else.
   if (result.ok && result.id) {
     activeId = result.id;
+    // job:new for the new job may already have arrived and been upserted
+    // before this promise resolved (upsert() only renders when activeId
+    // already matches, which it didn't yet) — render now so the header,
+    // job list highlight, and Cancel button don't keep showing the old
+    // (retried-from) job while the new one is actually running.
+    renderJobList();
+    renderLog();
   }
 });
 
