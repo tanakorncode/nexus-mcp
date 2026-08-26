@@ -34,6 +34,7 @@ const STATUS_ICONS = {
   connected: "icon-status-connected.png",
   connecting: "icon-status-connecting.png",
   unauthorized: "icon-status-error.png",
+  error: "icon-status-error.png",
 };
 
 function trayIcon(status) {
@@ -149,15 +150,16 @@ function reconnect() {
     memberId: settings.memberId,
     secret: settings.secret,
     onEvent: handleEvent,
-    onStatus: (status) => {
+    onStatus: (status, detail) => {
       connectionStatus = status;
-      log.log(`connection status: ${status}`);
       if (status === "unauthorized") {
         connectionDetail = "Server rejected memberId/secret — check both match what notify-server expects";
-        log.error(connectionDetail);
+      } else if (status === "error") {
+        connectionDetail = detail ?? "unknown error";
       } else {
         connectionDetail = "";
       }
+      log.log(`connection status: ${status}${connectionDetail ? ` — ${connectionDetail}` : ""}`);
       updateTrayTitle();
       broadcastStatus();
     },

@@ -33,9 +33,11 @@ class ReconnectingClient {
     this.onStatus("connecting");
     const ws = new WebSocket(url);
     this.ws = ws;
+    let lastErrorDetail = null;
 
     ws.on("open", () => {
       this.backoffMs = 1000;
+      lastErrorDetail = null;
       this.onStatus("connected");
     });
 
@@ -48,27 +50,30 @@ class ReconnectingClient {
     });
 
     ws.on("close", (code) => {
-      this.onStatus("disconnected");
       if (code === 4001) {
         // Bad secret/memberId — retrying won't help until settings change.
         this.onStatus("unauthorized");
         return;
       }
+      // A real connection failure (refused, DNS, timeout) fires "error"
+      // just before "close" — surface that reason here instead of the
+      // generic "disconnected", or a genuine network problem looks
+      // identical to "haven't tried connecting yet" in the UI.
+      this.onStatus(lastErrorDetail ? "error" : "disconnected", lastErrorDetail);
       this._scheduleReconnect();
     });
 
     ws.on("error", (err) => {
-      // "close" always follows "error" for ws, so reconnect is scheduled
-      // there — this only logs the actual reason (connection refused, DNS
-      // failure, timeout, etc.), which "close" alone never carries.
+      // "close" always follows "error" for ws, so the actual onStatus call
+      // happens there — this only computes the reason to attach to it.
       //
       // Node's own dual-stack (IPv4+IPv6) connection attempts surface as an
       // AggregateError with an EMPTY top-level .message — the real reason
       // (e.g. "connect ECONNREFUSED 127.0.0.1:8092") is one level down, in
       // .errors[]. Fall back through the shapes actually seen in practice
       // rather than trust .message alone.
-      const detail = err.message || err.errors?.[0]?.message || err.code || String(err);
-      console.error(`[ws-client] connection error: ${detail}`);
+      lastErrorDetail = err.message || err.errors?.[0]?.message || err.code || String(err);
+      console.error(`[ws-client] connection error: ${lastErrorDetail}`);
     });
   }
 

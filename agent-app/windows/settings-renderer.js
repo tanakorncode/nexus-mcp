@@ -8,6 +8,7 @@ const STATUS_LABELS = {
   connected: "เชื่อมต่อแล้ว",
   disconnected: "ขาดการเชื่อมต่อ — กำลังลองใหม่อัตโนมัติ",
   unauthorized: "secret หรือ memberId ไม่ถูกต้อง",
+  error: "เชื่อมต่อ server ไม่สำเร็จ",
   "not configured": "ยังตั้งค่าไม่ครบ (กรอกด้านล่างแล้วกด Save)",
   paused: "หยุดชั่วคราว (ปิด Enabled ไว้จาก tray menu)",
 };
@@ -128,7 +129,8 @@ $("testBtn").addEventListener("click", async () => {
 
 $("saveBtn").addEventListener("click", async () => {
   const current = await window.nexusAgent.getSettings();
-  await window.nexusAgent.saveSettings({
+  const validRepoMap = repoMap.filter((r) => r.repoName.trim() && r.path.trim());
+  const saved = await window.nexusAgent.saveSettings({
     ...current,
     serverUrl: $("serverUrl").value.trim(),
     memberId: $("memberId").value.trim(),
@@ -136,9 +138,21 @@ $("saveBtn").addEventListener("click", async () => {
     preset: $("preset").value,
     command: $("command").value.trim(),
     historyRetentionDays: Number($("historyRetentionDays").value),
-    repoMap: repoMap.filter((r) => r.repoName.trim() && r.path.trim()),
+    repoMap: validRepoMap,
   });
-  window.close();
+
+  // Deliberately doesn't close the window — closing right after Save would
+  // hide the exact status transition (connecting/connected/rejected) this
+  // screen exists to show. Left for the person to close once they've seen it.
+  const saveStatus = $("testStatus");
+  if (validRepoMap.length === 0) {
+    saveStatus.textContent = "บันทึกแล้ว — แต่ยังไม่มี repo mapping เลยสักอัน (ต้องมีอย่างน้อย 1 อัน ถึงจะเริ่มเชื่อมต่อได้)";
+    saveStatus.className = "status err";
+  } else {
+    saveStatus.textContent = "✓ บันทึกแล้ว — ดูสถานะเชื่อมต่อด้านบน";
+    saveStatus.className = "status ok";
+  }
+  console.log("saved settings:", saved);
 });
 
 init();
