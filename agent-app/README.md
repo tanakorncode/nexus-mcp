@@ -14,12 +14,12 @@ notify-server --WebSocket--> Nexus Agent (this app) --spawns--> your AI CLI, in 
 1. Download the installer for your OS (`.dmg` for Mac, `.exe` for Windows) from wherever your team distributes it.
 2. Open it, drag/run as normal for your OS.
 3. First launch opens **Settings** automatically since nothing's configured yet:
-   - **Server**: ask whoever runs `notify-server` for the address (`ws://host:port`)
-   - **Nexus member id**: run `whoami` via nexus-mcp to find yours
-   - **Shared secret**: ask whoever administers `notify-server`
+   - **Nexus member id**: click **ดึงอัตโนมัติ** ("auto-detect") — reads the same login `nexus-mcp-login` already stored in this machine's OS keychain, no need to run `whoami` or copy anything by hand. Requires having logged into nexus-mcp at least once already (you have, if you're using it with Claude Code). Falls back to typing it in manually if you haven't, or if auto-detect can't reach pm-system.
+   - **Shared secret**: ask whoever administers `notify-server` — this one genuinely has no way to auto-detect, it's not tied to your identity
+   - **Server**: defaults to the team's `notify-server` address, only change if told to
    - **AI ที่จะใช้**: pick a preset (Claude Code / Codex / Gemini CLI) or "Custom" to write your own command
-   - **โฟลเดอร์โปรเจกต์**: the repo this should actually do work in
-4. Click **Test** to confirm the command runs before saving — catches "command not found" immediately instead of only failing silently later when a real task comes in.
+   - **โฟลเดอร์โปรเจกต์**: add one row per repo you work in — matched against the task's repo name in Nexus, so events for a repo you haven't mapped are safely skipped rather than run in the wrong folder
+4. Click **Test** to confirm the command runs before saving — catches "command not found" immediately instead of only failing silently later when a real task comes in (tests against the first mapped repo's folder).
 5. **Save**. The app starts at login from now on (tray icon), reconnects automatically if your laptop sleeps or the network drops.
 
 Pause anytime from the tray menu (**Enabled** checkbox) without losing the connection — you'll still see activity queue up, just won't auto-run anything until re-enabled.

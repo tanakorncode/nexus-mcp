@@ -4,6 +4,7 @@ const store = require("./lib/store");
 const { ReconnectingClient } = require("./lib/ws-client");
 const { summarize } = require("./lib/summarize");
 const { runJob } = require("./lib/runner");
+const { resolveIdentity } = require("./lib/nexus-identity");
 
 let tray = null;
 let settingsWindow = null;
@@ -81,6 +82,13 @@ function handleEvent(msg) {
     return;
   }
 
+  const repoName = msg.payload?.task?.repository?.name ?? null;
+  const workDir = store.resolveWorkDir(settings, repoName);
+  if (!workDir) {
+    console.log(`[main] event for repo "${repoName ?? "(none)"}" has no local folder mapped, skipping:`, msg.event);
+    return;
+  }
+
   const job = { id: `${Date.now()}`, prompt, lines: [], done: null };
   recentJobs.unshift(job);
   if (recentJobs.length > 20) recentJobs.pop();
@@ -89,7 +97,7 @@ function handleEvent(msg) {
 
   runJob({
     command: settings.command,
-    workDir: settings.workDir,
+    workDir,
     prompt,
     onLine: (line) => pushLine(job, line),
     onDone: (result) => {
@@ -171,6 +179,10 @@ ipcMain.handle("settings:test", (_e, { command, workDir }) => {
   });
 });
 ipcMain.handle("jobs:recent", () => recentJobs);
+ipcMain.handle("identity:resolve", async () => {
+  const settings = getSettings();
+  return resolveIdentity(settings.pmSystemUrl);
+});
 
 app.whenReady().then(() => {
   if (process.platform === "darwin") app.dock?.hide();

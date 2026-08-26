@@ -11,24 +11,33 @@
   .row { display: flex; gap: 6px; }
   .row input { flex: 1; }
   button { padding: 6px 12px; font-size: 13px; cursor: pointer; }
+  button.small { padding: 4px 8px; font-size: 12px; }
   #testOutput { margin-top: 8px; background: #f5f5f5; padding: 8px; border-radius: 4px; max-height: 100px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 11px; display: none; }
   .actions { margin-top: 20px; display: flex; justify-content: space-between; }
   .status { font-size: 11px; margin-top: 4px; }
   .ok { color: #16a34a; } .err { color: #dc2626; }
+  #identityResult { font-size: 12px; margin-top: 6px; }
+  #repoTable { margin-top: 6px; }
+  .repo-row { display: flex; gap: 6px; margin-bottom: 4px; }
+  .repo-row input { flex: 1; }
 </style>
 </head>
 <body>
   <h2 style="margin-top:0">Nexus Agent</h2>
 
-  <label>Server</label>
-  <input type="text" id="serverUrl" placeholder="ws://host:port" />
-  <div class="hint">ที่อยู่ notify-server (ถามผู้ดูแลระบบถ้าไม่รู้)</div>
-
   <label>Nexus member id</label>
-  <input type="text" id="memberId" placeholder="เรียก whoami ผ่าน nexus-mcp เพื่อหา id ของตัวเอง" />
+  <div class="row">
+    <input type="text" id="memberId" placeholder="กด \"ดึงอัตโนมัติ\" ด้านขวา หรือกรอกเอง" />
+    <button id="detectBtn" class="small">ดึงอัตโนมัติ</button>
+  </div>
+  <div class="hint">อ่านจาก login ของ nexus-mcp บนเครื่องนี้ (ต้องรัน nexus-mcp-login มาก่อนอย่างน้อยหนึ่งครั้ง)</div>
+  <div id="identityResult"></div>
 
   <label>Shared secret</label>
   <input type="text" id="secret" placeholder="ขอจากผู้ดูแล notify-server" />
+
+  <label>Server</label>
+  <input type="text" id="serverUrl" placeholder="ws://host:port" />
 
   <label>AI ที่จะใช้</label>
   <select id="preset"></select>
@@ -37,11 +46,9 @@
   <input type="text" id="command" />
   <div class="hint">{{prompt}} จะถูกแทนที่ด้วยรายละเอียดงานอัตโนมัติ</div>
 
-  <label>โฟลเดอร์โปรเจกต์ (working directory)</label>
-  <div class="row">
-    <input type="text" id="workDir" placeholder="/path/to/your/project" />
-    <button id="browseBtn">เลือก…</button>
-  </div>
+  <label>โฟลเดอร์โปรเจกต์ (ต่อ repo — มีได้หลายอัน)</label>
+  <div id="repoTable"></div>
+  <button id="addRepoBtn" class="small">+ เพิ่ม repo</button>
 
   <div class="actions">
     <button id="testBtn">Test</button>

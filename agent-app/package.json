@@ -9,6 +9,7 @@
     "dist": "electron-builder"
   },
   "dependencies": {
+    "@napi-rs/keyring": "^1.1.4",
     "electron-updater": "^6.3.9",
     "ws": "^8.18.0"
   },

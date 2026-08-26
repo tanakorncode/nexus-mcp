@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("nexusAgent", {
   saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   chooseFolder: () => ipcRenderer.invoke("settings:chooseFolder"),
   testCommand: (args) => ipcRenderer.invoke("settings:test", args),
+  resolveIdentity: () => ipcRenderer.invoke("identity:resolve"),
   getRecentJobs: () => ipcRenderer.invoke("jobs:recent"),
   onJobNew: (cb) => ipcRenderer.on("job:new", (_e, job) => cb(job)),
   onJobLine: (cb) => ipcRenderer.on("job:line", (_e, data) => cb(data)),
