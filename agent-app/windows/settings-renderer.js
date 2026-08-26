@@ -3,6 +3,24 @@ const $ = (id) => document.getElementById(id);
 let presets = {};
 let repoMap = [];
 
+const STATUS_LABELS = {
+  connecting: "กำลังเชื่อมต่อ…",
+  connected: "เชื่อมต่อแล้ว",
+  disconnected: "ขาดการเชื่อมต่อ — กำลังลองใหม่อัตโนมัติ",
+  unauthorized: "secret หรือ memberId ไม่ถูกต้อง",
+  "not configured": "ยังตั้งค่าไม่ครบ (กรอกด้านล่างแล้วกด Save)",
+  paused: "หยุดชั่วคราว (ปิด Enabled ไว้จาก tray menu)",
+};
+
+function renderStatus({ status, detail }) {
+  $("statusDot").className = "status-dot " + status.replace(/\s+/g, "-");
+  $("statusText").textContent = (STATUS_LABELS[status] ?? status) + (detail ? ` — ${detail}` : "");
+}
+
+$("openLogBtn").addEventListener("click", () => window.nexusAgent.openLog());
+window.nexusAgent.getStatus().then(renderStatus);
+window.nexusAgent.onStatusUpdate(renderStatus);
+
 function renderRepoTable() {
   const container = $("repoTable");
   container.innerHTML = "";
