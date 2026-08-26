@@ -13,9 +13,11 @@ const DEFAULTS = {
   pmSystemUrl: "http://27.254.62.17:8090",
   preset: "Claude Code",
   command: PRESETS["Claude Code"],
-  // Which local folder to work in depends on which repo the task belongs
-  // to — a person can have more than one project checked out. Array of
-  // { repoName, path }, matched against the event's task.repository.name.
+  // Which local folder to work in depends on which repo (or, for a project
+  // with no git repo at all — pure planning/BA work — which project) the
+  // task belongs to. Array of { projectId, projectName, repositoryId,
+  // repoName, path } — repositoryId/repoName are null for a project-only
+  // row. See resolveWorkDir() for the matching order.
   repoMap: [],
   enabled: true,
   historyRetentionDays: 7,
@@ -76,12 +78,25 @@ function isConfigured(settings) {
   return missingFields(settings).length === 0;
 }
 
-// Which local folder to run in for a given event, based on which repo the
-// task belongs to. Returns null if that repo isn't mapped on this machine.
-function resolveWorkDir(settings, repoName) {
-  if (!repoName) return null;
-  const match = settings.repoMap.find((r) => r.repoName === repoName);
-  return match?.path ?? null;
+// Which local folder to run in for a given task, preferring an exact repo
+// match (most specific) and falling back to a project-only row (repoName
+// null) when the task has no repository linked — the only option for a
+// pure planning/BA project that was never registered as a git repo at all.
+// Returns null if neither matches anything mapped on this machine.
+function resolveWorkDir(settings, task) {
+  const repoName = task?.repository?.name ?? null;
+  if (repoName) {
+    const match = settings.repoMap.find((r) => r.repoName === repoName);
+    if (match) return match.path;
+  }
+
+  const projectName = task?.project?.name ?? null;
+  if (projectName) {
+    const match = settings.repoMap.find((r) => !r.repoName && r.projectName === projectName);
+    if (match) return match.path;
+  }
+
+  return null;
 }
 
 module.exports = { load, save, isConfigured, canConnect, missingFields, resolveWorkDir, PRESETS, DEFAULTS };

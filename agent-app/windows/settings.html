@@ -84,7 +84,9 @@
   #repoTable { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
   .repo-row { display: flex; gap: 6px; align-items: center; }
   .repo-row input { flex: 1; min-width: 0; }
-  .repo-row input[data-field="repoName"] { flex: 0 0 34%; }
+  .repo-row select { flex: 0 0 27%; min-width: 0; }
+  .repo-row select[data-field="projectId"] { flex: 0 0 30%; }
+  #repoTableError { font-size: 11.5px; color: var(--danger); margin-bottom: 8px; }
 
   .ok { color: var(--success); } .err { color: var(--danger); }
 
@@ -167,9 +169,11 @@
     </div>
 
     <div class="section">
-      <label>โฟลเดอร์โปรเจกต์ (ต่อ repo — มีได้หลายอัน)</label>
+      <label>โฟลเดอร์โปรเจกต์ (มีได้หลายอัน)</label>
+      <div class="hint" style="margin-bottom:8px;">เลือก Project และ Repository จริงจาก Nexus แทนการพิมพ์ชื่อเอง — ถ้า Project ไหนไม่มี repo (เช่นงานเอกสาร/BA) เลือก "— ทั้งโปรเจก (ไม่มี repo) —" แล้ว map ทั้งโปรเจกไปที่โฟลเดอร์เดียว</div>
+      <div id="repoTableError" style="display:none"></div>
       <div id="repoTable"></div>
-      <button id="addRepoBtn" class="small">+ เพิ่ม repo</button>
+      <button id="addRepoBtn" class="small">+ เพิ่ม mapping</button>
     </div>
 
     <div class="section">

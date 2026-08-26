@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("nexusAgent", {
   getAuthStatus: () => ipcRenderer.invoke("auth:status"),
   login: () => ipcRenderer.invoke("auth:login"),
   logout: () => ipcRenderer.invoke("auth:logout"),
+  listProjects: () => ipcRenderer.invoke("catalog:listProjects"),
+  listRepositories: (projectId) => ipcRenderer.invoke("catalog:listRepositories", projectId),
   getRecentJobs: () => ipcRenderer.invoke("jobs:recent"),
   cancelJob: (id) => ipcRenderer.invoke("jobs:cancel", id),
   retryJob: (id) => ipcRenderer.invoke("jobs:retry", id),

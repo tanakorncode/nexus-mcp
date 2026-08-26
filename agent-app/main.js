@@ -5,6 +5,7 @@ const { ReconnectingClient } = require("./lib/ws-client");
 const { summarize } = require("./lib/summarize");
 const { runJob } = require("./lib/runner");
 const nexusLogin = require("./lib/nexus-login");
+const nexusCatalog = require("./lib/nexus-catalog");
 const history = require("./lib/history");
 const log = require("./lib/log");
 
@@ -180,14 +181,16 @@ function handleEvent(msg) {
     return;
   }
 
-  const repoName = msg.payload?.task?.repository?.name ?? null;
-  const workDir = store.resolveWorkDir(settings, repoName);
+  const task = msg.payload?.task;
+  const workDir = store.resolveWorkDir(settings, task);
   if (!workDir) {
-    log.log(`event for repo "${repoName ?? "(none)"}" has no local folder mapped, skipping: ${msg.event}`);
+    const label = task?.repository?.name ?? task?.project?.name ?? "(none)";
+    log.log(`event for repo/project "${label}" has no local folder mapped, skipping: ${msg.event}`);
     return;
   }
 
-  log.log(`${msg.event} matched repo "${repoName}" -> running in ${workDir}`);
+  const label = task?.repository?.name ?? task?.project?.name;
+  log.log(`${msg.event} matched "${label}" -> running in ${workDir}`);
   startJob(prompt, workDir);
 }
 
@@ -301,6 +304,14 @@ ipcMain.handle("auth:logout", () => {
   nexusLogin.logout();
   reconnect(); // drops the socket now that getValidAccessToken() will return needsLogin
   return { ok: true };
+});
+ipcMain.handle("catalog:listProjects", () => {
+  const settings = getSettings();
+  return nexusCatalog.listProjects(settings.pmSystemUrl);
+});
+ipcMain.handle("catalog:listRepositories", (_e, projectId) => {
+  const settings = getSettings();
+  return nexusCatalog.listRepositories(settings.pmSystemUrl, projectId);
 });
 ipcMain.handle("status:get", () => ({ status: currentStatus(), detail: connectionDetail, config: currentConfig() }));
 ipcMain.handle("log:open", () => {

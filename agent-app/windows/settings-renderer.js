@@ -32,41 +32,116 @@ $("openLogBtn").addEventListener("click", () => window.nexusAgent.openLog());
 window.nexusAgent.getStatus().then(renderStatus);
 window.nexusAgent.onStatusUpdate(renderStatus);
 
-function renderRepoTable() {
+// Project list is the same for every row — fetched once, cached. Repo list
+// is per-project — fetched lazily as each project gets picked, also cached.
+let projects = [];
+let projectsError = null;
+const repoCache = new Map(); // projectId -> repos array
+
+async function ensureProjectsLoaded() {
+  if (projects.length || projectsError) return;
+  const result = await window.nexusAgent.listProjects();
+  if (result.ok) projects = result.data;
+  else projectsError = result.error;
+}
+
+async function reposForProject(projectId) {
+  if (!projectId) return [];
+  if (repoCache.has(projectId)) return repoCache.get(projectId);
+  const result = await window.nexusAgent.listRepositories(projectId);
+  const repos = result.ok ? result.data : [];
+  repoCache.set(projectId, repos);
+  return repos;
+}
+
+async function renderRepoTable() {
   const container = $("repoTable");
+  const errorEl = $("repoTableError");
+  await ensureProjectsLoaded();
+
+  if (projectsError) {
+    errorEl.textContent = `โหลดรายชื่อ Project ไม่สำเร็จ: ${projectsError} — เข้าสู่ระบบก่อน (ด้านบน) แล้วลองใหม่`;
+    errorEl.style.display = "block";
+    container.innerHTML = "";
+    return;
+  }
+  errorEl.style.display = "none";
   container.innerHTML = "";
-  repoMap.forEach((row, i) => {
+
+  for (let i = 0; i < repoMap.length; i++) {
+    const row = repoMap[i];
     const div = document.createElement("div");
     div.className = "repo-row";
-    div.innerHTML = `
-      <input type="text" placeholder="ชื่อ repo (ต้องตรงกับใน Nexus)" value="${row.repoName ?? ""}" data-field="repoName" />
-      <input type="text" placeholder="/path/to/local/checkout" value="${row.path ?? ""}" data-field="path" />
-      <button class="small" data-action="browse">เลือก…</button>
-      <button class="small danger-ghost" data-action="remove">ลบ</button>
-    `;
-    div.querySelector('[data-field="repoName"]').addEventListener("input", (e) => {
-      repoMap[i].repoName = e.target.value;
+
+    const projectSelect = document.createElement("select");
+    const blankOpt = new Option("— เลือก Project —", "");
+    projectSelect.appendChild(blankOpt);
+    for (const p of projects) {
+      const opt = new Option(p.name, p.id, false, p.id === row.projectId);
+      projectSelect.appendChild(opt);
+    }
+
+    const repoSelect = document.createElement("select");
+    repoSelect.appendChild(new Option("— ทั้งโปรเจก (ไม่มี repo) —", ""));
+    if (row.projectId) {
+      const repos = await reposForProject(row.projectId);
+      for (const r of repos) {
+        repoSelect.appendChild(new Option(r.name, r.id, false, r.id === row.repositoryId));
+      }
+    } else {
+      repoSelect.disabled = true;
+    }
+
+    const pathInput = document.createElement("input");
+    pathInput.type = "text";
+    pathInput.placeholder = "/path/to/local/checkout";
+    pathInput.value = row.path ?? "";
+
+    const browseBtn = document.createElement("button");
+    browseBtn.className = "small";
+    browseBtn.textContent = "เลือก…";
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "small danger-ghost";
+    removeBtn.textContent = "ลบ";
+
+    projectSelect.addEventListener("change", () => {
+      const p = projects.find((p) => p.id === projectSelect.value);
+      repoMap[i].projectId = projectSelect.value || null;
+      repoMap[i].projectName = p?.name ?? null;
+      // Repo choice doesn't carry over to a different project.
+      repoMap[i].repositoryId = null;
+      repoMap[i].repoName = null;
+      renderRepoTable();
     });
-    div.querySelector('[data-field="path"]').addEventListener("input", (e) => {
+    repoSelect.addEventListener("change", () => {
+      const repos = repoCache.get(row.projectId) ?? [];
+      const r = repos.find((r) => r.id === repoSelect.value);
+      repoMap[i].repositoryId = repoSelect.value || null;
+      repoMap[i].repoName = r?.name ?? null;
+    });
+    pathInput.addEventListener("input", (e) => {
       repoMap[i].path = e.target.value;
     });
-    div.querySelector('[data-action="browse"]').addEventListener("click", async () => {
+    browseBtn.addEventListener("click", async () => {
       const dir = await window.nexusAgent.chooseFolder();
       if (dir) {
         repoMap[i].path = dir;
         renderRepoTable();
       }
     });
-    div.querySelector('[data-action="remove"]').addEventListener("click", () => {
+    removeBtn.addEventListener("click", () => {
       repoMap.splice(i, 1);
       renderRepoTable();
     });
+
+    div.append(projectSelect, repoSelect, pathInput, browseBtn, removeBtn);
     container.appendChild(div);
-  });
+  }
 }
 
 $("addRepoBtn").addEventListener("click", () => {
-  repoMap.push({ repoName: "", path: "" });
+  repoMap.push({ projectId: null, projectName: null, repositoryId: null, repoName: null, path: "" });
   renderRepoTable();
 });
 
@@ -97,6 +172,13 @@ $("loginBtn").addEventListener("click", async () => {
     return;
   }
   renderAuthStatus(result.user);
+  // The repo-mapping table caches "not logged in" as a permanent failure
+  // (ensureProjectsLoaded only skips re-fetching once it has *something*,
+  // success or error) — clear that now that a login just succeeded, or a
+  // repo table that loaded before the person logged in stays stuck showing
+  // the old error forever.
+  projectsError = null;
+  renderRepoTable();
 });
 
 $("logoutBtn").addEventListener("click", async () => {
@@ -158,7 +240,7 @@ $("testBtn").addEventListener("click", async () => {
 
 $("saveBtn").addEventListener("click", async () => {
   const current = await window.nexusAgent.getSettings();
-  const validRepoMap = repoMap.filter((r) => r.repoName.trim() && r.path.trim());
+  const validRepoMap = repoMap.filter((r) => r.projectId && r.path?.trim());
   const saved = await window.nexusAgent.saveSettings({
     ...current,
     serverUrl: $("serverUrl").value.trim(),
