@@ -81,11 +81,14 @@
   button.danger-ghost { color: var(--danger); border-color: transparent; background: transparent; padding: 5px 8px; }
   button.danger-ghost:hover { background: rgba(248,81,73,0.12); }
 
-  #repoTable { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-  .repo-row { display: flex; gap: 6px; align-items: center; }
-  .repo-row input { flex: 1; min-width: 0; }
-  .repo-row select { flex: 0 0 27%; min-width: 0; }
-  .repo-row select[data-field="projectId"] { flex: 0 0 30%; }
+  #repoTable { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+  .repo-row {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 8px; border: 1px solid var(--border); border-radius: 6px;
+  }
+  .repo-row-line { display: flex; gap: 6px; align-items: center; }
+  .repo-row-line select { flex: 1; min-width: 0; }
+  .repo-row-line input { flex: 1; min-width: 0; }
   #repoTableError { font-size: 11.5px; color: var(--danger); margin-bottom: 8px; }
 
   .ok { color: var(--success); } .err { color: var(--danger); }

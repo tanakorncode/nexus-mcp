@@ -135,7 +135,15 @@ async function renderRepoTable() {
       renderRepoTable();
     });
 
-    div.append(projectSelect, repoSelect, pathInput, browseBtn, removeBtn);
+    const line1 = document.createElement("div");
+    line1.className = "repo-row-line";
+    line1.append(projectSelect, repoSelect);
+
+    const line2 = document.createElement("div");
+    line2.className = "repo-row-line";
+    line2.append(pathInput, browseBtn, removeBtn);
+
+    div.append(line1, line2);
     container.appendChild(div);
   }
 }
