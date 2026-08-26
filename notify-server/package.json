@@ -1,0 +1,15 @@
+{
+  "name": "nexus-notify-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bridges pm-system's Redis event stream to teammates' local agent apps over WebSocket",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "ioredis": "^5.11.1"
+  }
+}
