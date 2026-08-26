@@ -14,14 +14,39 @@ notify-server --WebSocket--> Nexus Agent (this app) --spawns--> your AI CLI, in 
 1. Download the installer for your OS (`.dmg` for Mac, `.exe` for Windows) from wherever your team distributes it.
 2. Open it, drag/run as normal for your OS.
 3. First launch opens **Settings** automatically since nothing's configured yet:
-   - **Nexus member id**: click **ดึงอัตโนมัติ** ("auto-detect") — reads the same login `nexus-mcp-login` already stored in this machine's OS keychain, no need to run `whoami` or copy anything by hand. Requires having logged into nexus-mcp at least once already (you have, if you're using it with Claude Code). Falls back to typing it in manually if you haven't, or if auto-detect can't reach pm-system.
-   - **Shared secret**: ask whoever administers `notify-server` — this one genuinely has no way to auto-detect, it's not tied to your identity
+   - **บัญชี Nexus**: click **เข้าสู่ระบบ** — opens your browser to log into Nexus (same PKCE flow as `nexus-mcp-login`, but its own separate session — logging into one doesn't log you into the other, and you do need to do this once even if you're already logged into `nexus-mcp-login`). Once done, the app authenticates its connection with that login instead of a shared secret — see "Auth" below for why.
    - **Server**: defaults to the team's `notify-server` address, only change if told to
    - **AI ที่จะใช้**: pick a preset (Claude Code / Codex / Gemini CLI) or "Custom" to write your own command
    - **โฟลเดอร์โปรเจกต์**: add one row per repo you work in — matched against the task's repo name in Nexus, so events for a repo you haven't mapped are safely skipped rather than run in the wrong folder
    - **เก็บประวัติ Activity ไว้กี่วัน**: 1/3/7 days — completed jobs older than this are pruned from `history.jsonl` (in the app's userData folder) the next time the app starts or settings are saved
 4. Click **Test** to confirm the command runs before saving — catches "command not found" immediately instead of only failing silently later when a real task comes in (tests against the first mapped repo's folder).
 5. **Save**. The app starts at login from now on (tray icon), reconnects automatically if your laptop sleeps or the network drops.
+
+### The `{{prompt}}` command template
+
+The Command field (e.g. `claude -p "{{prompt}}"`) is a template, not a
+literal command — `{{prompt}}` gets replaced with the actual task/comment
+text before running, e.g. a `task.comment_created` event becomes:
+
+```
+[Nexus] PEA-T050 — Access Log Retention ≥90 วัน (TOR ข้อ 4.2) [demo-project-team]
+New comment from Tech Lead: "ช่วยเช็ค log retention policy ให้หน่อย"
+http://27.254.62.17:8090/projects/.../tasks/cmrn13n4400553gswkitgjr2o
+```
+
+so `claude -p "{{prompt}}"` runs, in effect, `claude -p "<that whole block
+of text>"`. Keep `{{prompt}}` wrapped in quotes in the template — see
+"Command safety" below for why the quoting matters, not just style.
+
+### Auth
+
+The socket connection to `notify-server` authenticates as *you*, not as
+"whoever knows the shared secret" — logging in gets a real per-person
+OAuth token (same kind `nexus-mcp-login` gets, via pm-system), and
+`notify-server` verifies it and reads your member id out of the token
+itself rather than trusting a client-supplied one. Nothing to request from
+an admin anymore; if login fails, it's your Nexus account/browser, not a
+missing secret.
 
 Pause anytime from the tray menu (**Enabled** checkbox) without losing the connection — you'll still see activity queue up, just won't auto-run anything until re-enabled.
 
@@ -53,18 +78,18 @@ npm install
 npm start          # runs the app via the local Electron dev binary
 ```
 
-**A real limitation hit while building this**: this was developed inside a
-sandboxed environment where the real Electron binary couldn't be
+**A real limitation hit while first building this**: it was developed
+inside a sandboxed environment where the real Electron binary couldn't be
 downloaded (network-restricted, left a ~50KB stub instead of the real
-~100MB+ app) — the GUI layer (tray icon, settings/progress windows) could
-not be launched and visually verified there. Everything *except* the
-Electron GUI shell was verified for real: `lib/command.js`'s injection-safe
-argv building (including actual injection-attempt strings run through a
-real spawned process, not just unit-checked), `lib/store.js`'s
-persistence, and `lib/ws-client.js` against a real running `notify-server`
-over a real WebSocket connection with real Redis-published events. Run
-`npm start` on a normal machine to confirm the GUI layer before shipping
-this to the team — that part is genuinely unverified.
+~100MB+ app), so the GUI layer couldn't be launched and visually verified
+there at the time. Since then, on a normal machine, the GUI has been
+exercised for real: tray → Settings/Activity windows launched with the
+actual Electron binary, buttons driven via CDP (`Runtime.evaluate` +
+`Page.captureScreenshot`, since there's no `playwright` dependency here)
+against a real `notify-server` connection, a real Nexus task-comment event
+triggering a real job end-to-end, and Cancel/Retry both exercised on a
+live running job. Still worth a manual `npm start` smoke test after any
+UI change, same as any GUI code — just not an unverified blind spot anymore.
 
 ## Packaging
 
