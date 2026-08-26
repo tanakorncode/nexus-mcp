@@ -54,6 +54,24 @@ async function reposForProject(projectId) {
   return repos;
 }
 
+// One project can have several repo mappings (or one "whole project"
+// fallback) — grouping by projectId means picking the project once per
+// group instead of repeating it on every single row.
+function groupRepoMap() {
+  const groups = [];
+  const byProjectId = new Map();
+  repoMap.forEach((row, i) => {
+    if (row.projectId && byProjectId.has(row.projectId)) {
+      byProjectId.get(row.projectId).entries.push({ row, i });
+      return;
+    }
+    const group = { projectId: row.projectId, projectName: row.projectName, entries: [{ row, i }] };
+    groups.push(group);
+    if (row.projectId) byProjectId.set(row.projectId, group);
+  });
+  return groups;
+}
+
 async function renderRepoTable() {
   const container = $("repoTable");
   const errorEl = $("repoTableError");
@@ -68,87 +86,124 @@ async function renderRepoTable() {
   errorEl.style.display = "none";
   container.innerHTML = "";
 
-  for (let i = 0; i < repoMap.length; i++) {
-    const row = repoMap[i];
-    const div = document.createElement("div");
-    div.className = "repo-row";
+  const groups = groupRepoMap();
+  const usedProjectIds = new Set(groups.map((g) => g.projectId).filter(Boolean));
 
+  for (const group of groups) {
+    const groupEl = document.createElement("div");
+    groupEl.className = "repo-group";
+
+    // A project already claimed by another group can't be picked again —
+    // that'd just split one project's mappings across two groups.
     const projectSelect = document.createElement("select");
-    const blankOpt = new Option("— เลือก Project —", "");
-    projectSelect.appendChild(blankOpt);
+    projectSelect.appendChild(new Option("— เลือก Project —", ""));
     for (const p of projects) {
-      const opt = new Option(p.name, p.id, false, p.id === row.projectId);
-      projectSelect.appendChild(opt);
+      if (p.id !== group.projectId && usedProjectIds.has(p.id)) continue;
+      projectSelect.appendChild(new Option(p.name, p.id, false, p.id === group.projectId));
     }
 
-    const repoSelect = document.createElement("select");
-    repoSelect.appendChild(new Option("— ทั้งโปรเจก (ไม่มี repo) —", ""));
-    if (row.projectId) {
-      const repos = await reposForProject(row.projectId);
-      for (const r of repos) {
-        repoSelect.appendChild(new Option(r.name, r.id, false, r.id === row.repositoryId));
-      }
-    } else {
-      repoSelect.disabled = true;
-    }
+    const addRepoBtn = document.createElement("button");
+    addRepoBtn.className = "small ghost-link";
+    addRepoBtn.textContent = "+ เพิ่ม repo";
+    addRepoBtn.disabled = !group.projectId;
 
-    const pathInput = document.createElement("input");
-    pathInput.type = "text";
-    pathInput.placeholder = "/path/to/local/checkout";
-    pathInput.value = row.path ?? "";
-
-    const browseBtn = document.createElement("button");
-    browseBtn.className = "small";
-    browseBtn.textContent = "เลือก…";
-
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "small danger-ghost";
-    removeBtn.textContent = "ลบ";
+    const removeGroupBtn = document.createElement("button");
+    removeGroupBtn.className = "small danger-ghost";
+    removeGroupBtn.textContent = "ลบกลุ่มนี้";
 
     projectSelect.addEventListener("change", () => {
       const p = projects.find((p) => p.id === projectSelect.value);
-      repoMap[i].projectId = projectSelect.value || null;
-      repoMap[i].projectName = p?.name ?? null;
-      // Repo choice doesn't carry over to a different project.
-      repoMap[i].repositoryId = null;
-      repoMap[i].repoName = null;
-      renderRepoTable();
-    });
-    repoSelect.addEventListener("change", () => {
-      const repos = repoCache.get(row.projectId) ?? [];
-      const r = repos.find((r) => r.id === repoSelect.value);
-      repoMap[i].repositoryId = repoSelect.value || null;
-      repoMap[i].repoName = r?.name ?? null;
-    });
-    pathInput.addEventListener("input", (e) => {
-      repoMap[i].path = e.target.value;
-    });
-    browseBtn.addEventListener("click", async () => {
-      const dir = await window.nexusAgent.chooseFolder();
-      if (dir) {
-        repoMap[i].path = dir;
-        renderRepoTable();
+      for (const { i } of group.entries) {
+        repoMap[i].projectId = projectSelect.value || null;
+        repoMap[i].projectName = p?.name ?? null;
+        // Repo choices don't carry over to a different project.
+        repoMap[i].repositoryId = null;
+        repoMap[i].repoName = null;
       }
+      renderRepoTable();
     });
-    removeBtn.addEventListener("click", () => {
-      repoMap.splice(i, 1);
+    addRepoBtn.addEventListener("click", () => {
+      repoMap.push({
+        projectId: group.projectId,
+        projectName: group.projectName,
+        repositoryId: null,
+        repoName: null,
+        path: "",
+      });
+      renderRepoTable();
+    });
+    removeGroupBtn.addEventListener("click", () => {
+      const indices = new Set(group.entries.map((e) => e.i));
+      repoMap = repoMap.filter((_, i) => !indices.has(i));
       renderRepoTable();
     });
 
-    const line1 = document.createElement("div");
-    line1.className = "repo-row-line";
-    line1.append(projectSelect, repoSelect);
+    const header = document.createElement("div");
+    header.className = "repo-group-header";
+    header.append(projectSelect, addRepoBtn, removeGroupBtn);
+    groupEl.appendChild(header);
 
-    const line2 = document.createElement("div");
-    line2.className = "repo-row-line";
-    line2.append(pathInput, browseBtn, removeBtn);
+    const rowsEl = document.createElement("div");
+    rowsEl.className = "repo-group-rows";
 
-    div.append(line1, line2);
-    container.appendChild(div);
+    for (const { row, i } of group.entries) {
+      const repoSelect = document.createElement("select");
+      repoSelect.appendChild(new Option("— ทั้งโปรเจก (ไม่มี repo) —", ""));
+      if (group.projectId) {
+        const repos = await reposForProject(group.projectId);
+        for (const r of repos) {
+          repoSelect.appendChild(new Option(r.name, r.id, false, r.id === row.repositoryId));
+        }
+      } else {
+        repoSelect.disabled = true;
+      }
+
+      const pathInput = document.createElement("input");
+      pathInput.type = "text";
+      pathInput.placeholder = "/path/to/local/checkout";
+      pathInput.value = row.path ?? "";
+
+      const browseBtn = document.createElement("button");
+      browseBtn.className = "small";
+      browseBtn.textContent = "เลือก…";
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "small danger-ghost";
+      removeBtn.textContent = "ลบ";
+
+      repoSelect.addEventListener("change", () => {
+        const repos = repoCache.get(group.projectId) ?? [];
+        const r = repos.find((r) => r.id === repoSelect.value);
+        repoMap[i].repositoryId = repoSelect.value || null;
+        repoMap[i].repoName = r?.name ?? null;
+      });
+      pathInput.addEventListener("input", (e) => {
+        repoMap[i].path = e.target.value;
+      });
+      browseBtn.addEventListener("click", async () => {
+        const dir = await window.nexusAgent.chooseFolder();
+        if (dir) {
+          repoMap[i].path = dir;
+          renderRepoTable();
+        }
+      });
+      removeBtn.addEventListener("click", () => {
+        repoMap.splice(i, 1);
+        renderRepoTable();
+      });
+
+      const rowEl = document.createElement("div");
+      rowEl.className = "repo-row-line";
+      rowEl.append(repoSelect, pathInput, browseBtn, removeBtn);
+      rowsEl.appendChild(rowEl);
+    }
+
+    groupEl.appendChild(rowsEl);
+    container.appendChild(groupEl);
   }
 }
 
-$("addRepoBtn").addEventListener("click", () => {
+$("addProjectBtn").addEventListener("click", () => {
   repoMap.push({ projectId: null, projectName: null, repositoryId: null, repoName: null, path: "" });
   renderRepoTable();
 });
