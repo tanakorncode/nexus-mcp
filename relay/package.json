@@ -1,0 +1,11 @@
+{
+  "name": "nexus-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Relays pm-system task webhooks to Claude Code routine fires, per team member",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}

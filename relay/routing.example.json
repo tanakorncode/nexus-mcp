@@ -1,0 +1,14 @@
+{
+  "members": {
+    "<nexus-teamMember-id-1>": {
+      "name": "backend-dev",
+      "routineId": "trig_xxxxxxxxxxxxxxxxxxxx",
+      "routineToken": "sk-ant-oat01-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "<nexus-teamMember-id-2>": {
+      "name": "frontend-dev",
+      "routineId": "trig_yyyyyyyyyyyyyyyyyyyy",
+      "routineToken": "sk-ant-oat01-yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+    }
+  }
+}
