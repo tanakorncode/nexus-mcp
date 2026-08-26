@@ -1,7 +1,8 @@
 const jobsEl = document.getElementById("jobs");
 const logEl = document.getElementById("log");
+const headerEl = document.getElementById("log-header");
 
-const jobs = new Map(); // id -> { id, prompt, lines, done }
+const jobs = new Map(); // id -> { id, prompt, lines: [], done }
 let activeId = null;
 
 function dotClass(job) {
@@ -14,7 +15,13 @@ function renderJobList() {
   for (const job of [...jobs.values()].reverse()) {
     const div = document.createElement("div");
     div.className = "job" + (job.id === activeId ? " active" : "");
-    div.innerHTML = `<span class="dot ${dotClass(job)}"></span>${job.prompt.split("\n")[0].slice(0, 40)}`;
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = job.prompt.split("\n")[0].slice(0, 40);
+    const dot = document.createElement("span");
+    dot.className = `dot ${dotClass(job)}`;
+    div.appendChild(dot);
+    div.appendChild(title);
     div.addEventListener("click", () => {
       activeId = job.id;
       renderJobList();
@@ -24,9 +31,21 @@ function renderJobList() {
   }
 }
 
+function appendLogLine(line) {
+  const div = document.createElement("div");
+  const isStderr = line.startsWith("[stderr] ");
+  div.className = "logline" + (isStderr ? " stderr" : "");
+  div.innerHTML = ansiToHtml(line);
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
 function renderLog() {
   const job = jobs.get(activeId);
-  logEl.textContent = job ? job.lines.join("\n") : "";
+  logEl.innerHTML = "";
+  headerEl.textContent = job ? job.prompt.replace(/\n/g, "  ·  ") : "";
+  if (!job) return;
+  for (const line of job.lines) appendLogLine(line);
 }
 
 function upsert(job) {
@@ -46,7 +65,7 @@ window.nexusAgent.onJobLine(({ id, line }) => {
   const job = jobs.get(id);
   if (!job) return;
   job.lines.push(line);
-  if (id === activeId) renderLog();
+  if (id === activeId) appendLogLine(line);
 });
 
 window.nexusAgent.onJobDone(({ id, result }) => {
@@ -54,4 +73,11 @@ window.nexusAgent.onJobDone(({ id, result }) => {
   if (!job) return;
   job.done = result;
   renderJobList();
+  if (id === activeId) {
+    appendLogLine(
+      result.ok
+        ? "\x1b[1m\x1b[32m✓ เสร็จแล้ว\x1b[0m"
+        : `\x1b[1m\x1b[31m✗ ล้มเหลว (${result.error ?? `exit code ${result.exitCode}`})\x1b[0m`,
+    );
+  }
 });

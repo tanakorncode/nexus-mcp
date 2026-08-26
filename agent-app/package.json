@@ -20,7 +20,13 @@
   "build": {
     "appId": "com.pea-thailand.nexus-agent",
     "productName": "Nexus Agent",
-    "files": ["main.js", "preload.js", "lib/**/*", "windows/**/*", "assets/**/*"],
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**/*",
+      "windows/**/*",
+      "assets/**/*"
+    ],
     "mac": {
       "target": "dmg",
       "category": "public.app-category.developer-tools",

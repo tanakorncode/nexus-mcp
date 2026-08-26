@@ -4,24 +4,41 @@
 <meta charset="utf-8" />
 <title>Nexus Agent — Activity</title>
 <style>
-  body { font-family: -apple-system, Segoe UI, sans-serif; margin: 0; font-size: 12px; color: #222; }
-  #list { display: flex; height: 100vh; }
-  #jobs { width: 200px; border-right: 1px solid #ddd; overflow-y: auto; }
-  .job { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; }
-  .job.active { background: #eef2ff; }
-  .job .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-  .dot.running { background: #f59e0b; }
-  .dot.ok { background: #16a34a; }
-  .dot.fail { background: #dc2626; }
-  #log { flex: 1; padding: 10px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 11px; }
-  #empty { padding: 16px; color: #888; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, sans-serif; margin: 0; font-size: 12px; color: #c9d1d9; background: #0d1117; }
+  #layout { display: flex; height: 100vh; }
+  #jobs { width: 220px; border-right: 1px solid #30363d; overflow-y: auto; background: #010409; flex-shrink: 0; }
+  .job { padding: 9px 10px; border-bottom: 1px solid #21262d; cursor: pointer; display: flex; align-items: center; gap: 7px; }
+  .job:hover { background: #161b22; }
+  .job.active { background: #1c2333; border-left: 2px solid #58a6ff; }
+  .job .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c9d1d9; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.running { background: #d29922; box-shadow: 0 0 6px #d29922; animation: pulse 1.2s infinite; }
+  .dot.ok { background: #3fb950; }
+  .dot.fail { background: #f85149; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  #log-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #log-header { padding: 8px 12px; border-bottom: 1px solid #30363d; color: #8b949e; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #log {
+    flex: 1; padding: 10px 12px; overflow-y: auto; overflow-x: auto;
+    white-space: pre; font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px; line-height: 1.5;
+  }
+  .logline { display: block; }
+  .logline.stderr { color: #ffa198; }
+  #empty { padding: 16px; color: #6e7681; }
 </style>
 </head>
 <body>
-  <div id="list">
+  <div id="layout">
     <div id="jobs"></div>
-    <div id="log"><div id="empty">ยังไม่มีงานเข้ามา — จะขึ้นที่นี่ทันทีที่มี event</div></div>
+    <div id="log-pane">
+      <div id="log-header"></div>
+      <div id="log"><div id="empty">ยังไม่มีงานเข้ามา — จะขึ้นที่นี่ทันทีที่มี event</div></div>
+    </div>
   </div>
+  <script src="../lib/ansi-to-html.js"></script>
   <script src="progress-renderer.js"></script>
 </body>
 </html>
