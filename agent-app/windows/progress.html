@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Nexus Agent — Activity</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; margin: 0; font-size: 12px; color: #222; }
+  #list { display: flex; height: 100vh; }
+  #jobs { width: 200px; border-right: 1px solid #ddd; overflow-y: auto; }
+  .job { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; }
+  .job.active { background: #eef2ff; }
+  .job .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot.running { background: #f59e0b; }
+  .dot.ok { background: #16a34a; }
+  .dot.fail { background: #dc2626; }
+  #log { flex: 1; padding: 10px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 11px; }
+  #empty { padding: 16px; color: #888; }
+</style>
+</head>
+<body>
+  <div id="list">
+    <div id="jobs"></div>
+    <div id="log"><div id="empty">ยังไม่มีงานเข้ามา — จะขึ้นที่นี่ทันทีที่มี event</div></div>
+  </div>
+  <script src="progress-renderer.js"></script>
+</body>
+</html>

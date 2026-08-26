@@ -1,0 +1,38 @@
+{
+  "name": "nexus-agent-app",
+  "version": "0.1.0",
+  "description": "Runs a local AI CLI (Claude Code by default) the moment a task you're on changes in Nexus — no polling, no manual check-in.",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.pea-thailand.nexus-agent",
+    "productName": "Nexus Agent",
+    "files": ["main.js", "preload.js", "lib/**/*", "windows/**/*", "assets/**/*"],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon-16.png"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "http://27.254.62.17:8090/agent-app-releases/"
+      }
+    ]
+  }
+}
