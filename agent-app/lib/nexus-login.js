@@ -1,16 +1,18 @@
 // Real per-person login for the WebSocket connection to notify-server —
 // replaces the old "type in a memberId + a secret every teammate shares"
 // setup. Reuses the exact PKCE loopback flow nexus-mcp's own CLI login
-// (nexus-mcp/src/cli/login.ts) already has working against pm-system, and
-// writes to the SAME OS keychain entry it does — logging in with either
-// one authenticates both, since it's one Nexus identity per machine either way.
+// (nexus-mcp/src/cli/login.ts) already has working against pm-system, but
+// writes to its OWN keychain entry rather than the CLI's — logging out of
+// one doesn't silently kill the other's session. The tradeoff: no
+// automatic "already logged in via the CLI" for free; each needs its own
+// login once per machine.
 const { Entry } = require("@napi-rs/keyring");
 const { createServer } = require("http");
 const { randomBytes, createHash } = require("crypto");
 const { shell } = require("electron");
 
 const SERVICE = "nexus-mcp";
-const ACCOUNT = "pat"; // matches nexus-mcp/src/auth/TokenStore.ts — legacy name, still current
+const ACCOUNT = "agent-app";
 
 function entry() {
   return new Entry(SERVICE, ACCOUNT);
