@@ -138,9 +138,13 @@ async function renderRepoTable() {
       renderRepoTable();
     });
 
+    const actions = document.createElement("div");
+    actions.className = "repo-group-actions";
+    actions.append(addRepoBtn, removeGroupBtn);
+
     const header = document.createElement("div");
     header.className = "repo-group-header";
-    header.append(projectSelect, addRepoBtn, removeGroupBtn);
+    header.append(actions, projectSelect);
     groupEl.appendChild(header);
 
     const rowsEl = document.createElement("div");

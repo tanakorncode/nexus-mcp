@@ -86,9 +86,10 @@
     display: flex; flex-direction: column; gap: 8px;
     padding: 8px; border: 1px solid var(--border); border-radius: 6px;
   }
-  .repo-group-header { display: flex; gap: 6px; align-items: center; }
-  .repo-group-header select { flex: 1; min-width: 0; }
-  .repo-group-header button { flex-shrink: 0; }
+  .repo-group-header { display: flex; flex-direction: column; gap: 6px; }
+  .repo-group-actions { display: flex; justify-content: flex-end; gap: 6px; }
+  .repo-group-actions button { flex-shrink: 0; }
+  .repo-group-header select { width: 100%; }
   .repo-group-rows {
     display: flex; flex-direction: column; gap: 6px;
     padding-left: 10px; border-left: 2px solid var(--border);
