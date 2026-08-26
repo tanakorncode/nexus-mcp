@@ -96,7 +96,9 @@ $("testBtn").addEventListener("click", async () => {
     workDir,
   });
 
-  output.textContent = result.lines.join("\n") || "(ไม่มี output)";
+  output.innerHTML = result.lines.length
+    ? result.lines.map((line) => ansiToHtml(line)).join("\n")
+    : "(ไม่มี output)";
   if (result.ok) {
     status.textContent = workDir ? "✓ รันได้ปกติ" : "✓ รันได้ปกติ (ยังไม่ได้ตั้ง repo — ทดสอบใน working directory ปัจจุบัน)";
     status.className = "status ok";
