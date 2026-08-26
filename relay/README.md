@@ -41,24 +41,16 @@ You need Claude Code on the web enabled (Pro/Max/Team/Enterprise plan).
 
 1. Build the routing map — each team member's `{memberId: {name, routineId, routineToken}}`. **Never commit this anywhere** — it holds live bearer tokens. See `routing.example.json` for the shape.
 2. Register one App + one webhook on pm-system pointing at this relay (see below). This is admin-only, not per-person.
-3. Deploy the relay somewhere pm-system's server can reach it — pick based on whether pm-system's server accepts inbound connections from outside:
-   - **pm-system's server has no inbound access from outside** (typical for an internal company server): deploy to **Vercel** (or similar) instead — pm-system only needs to make an *outbound* HTTPS call to fire the webhook, which is essentially always allowed even when inbound is locked down. See "Deploying to Vercel" below.
-   - **pm-system's server does accept inbound connections** (or the relay runs on the same host/network): self-host with `server.mjs`, e.g. via `docker compose` alongside pm-system. See "Deploying self-hosted" below.
+3. Deploy the relay. There are two hops to think about separately — pm-system → relay, and relay → Anthropic's routine `/fire` endpoint — and only one of them is a real choice:
+   - **pm-system → relay** isn't actually a decision if the relay runs *on the same host/network as pm-system* (e.g. another container in the same `docker compose`): that traffic never leaves the internal network, so whether pm-system's server accepts inbound connections from the public internet is irrelevant. This is the default — see "Deploying self-hosted" below.
+   - **relay → Anthropic** is the one hop that's genuinely internet-facing, and it's *outbound only* — normally fine even on a locked-down internal server (no different from pm-system's own outbound calls to, e.g., the LINE API). Worth a one-time check if unsure: `curl -I https://api.anthropic.com` from that server should connect (any response, not necessarily 200) rather than time out or refuse.
+   - The only real reason to reach for **Vercel** instead is if the relay *can't* be co-located with pm-system at all — e.g. whoever administers the relay has no deploy access to that server. See "Deploying to Vercel" below for that case.
 
-### Deploying to Vercel
+The relay is two entrypoints sharing `lib.mjs`: `server.mjs` (self-hosted) and `api/webhook.js` (a Vercel Function using the Web Standard `fetch` handler — deliberately not the `request.body` convenience helper, which auto-parses JSON before the handler runs and would make the HMAC signature, computed over the exact raw bytes pm-system sent, unverifiable).
 
-The relay is two entrypoints sharing `lib.mjs`: `server.mjs` (self-hosted, below) and `api/webhook.js` (a Vercel Function using the Web Standard `fetch` handler — deliberately not the `request.body` convenience helper, which auto-parses JSON before the handler runs and would make the HMAC signature, computed over the exact raw bytes pm-system sent, unverifiable).
+### Deploying self-hosted (default)
 
-1. Push this repo to GitHub (or GitLab/Bitbucket) if it isn't already, then import it into Vercel.
-2. In the Vercel project's settings, set **Root Directory** to `relay` — this repo's own top-level `package.json` belongs to the unrelated MCP server, not this service.
-3. Set environment variables on the Vercel project:
-   - `PM_WEBHOOK_SECRET` — the secret from webhook registration (below)
-   - `ROUTING_JSON` — the whole routing map as a single-line JSON string, e.g. `{"members":{"<memberId>":{"name":"...","routineId":"trig_...","routineToken":"sk-ant-oat01-..."}}}`
-4. Deploy. The webhook endpoint is `https://<your-project>.vercel.app/api/webhook` — that's the `url` to register on pm-system.
-
-No `vercel.json` needed — Vercel auto-detects `/api/webhook.js` as a function.
-
-### Deploying self-hosted
+Run it as another service on the same host/network as pm-system — e.g. add it to pm-system's own `docker-compose.yml` as another service, so pm-system can reach it as `http://nexus-relay:8091/webhook` over the internal docker network with nothing exposed publicly.
 
 Copy `routing.example.json` → `routing.json` (kept off git — already gitignored) and fill in the real values. The webhook endpoint is `http://<relay-host>:8091/webhook`.
 
@@ -81,6 +73,17 @@ docker run -d \
 ```
 
 No `npm install` needed — both entrypoints use only Node/Web built-ins.
+
+### Deploying to Vercel (only if the relay can't be co-located with pm-system)
+
+1. Push this repo to GitHub (or GitLab/Bitbucket) if it isn't already, then import it into Vercel.
+2. In the Vercel project's settings, set **Root Directory** to `relay` — this repo's own top-level `package.json` belongs to the unrelated MCP server, not this service.
+3. Set environment variables on the Vercel project:
+   - `PM_WEBHOOK_SECRET` — the secret from webhook registration (below)
+   - `ROUTING_JSON` — the whole routing map as a single-line JSON string, e.g. `{"members":{"<memberId>":{"name":"...","routineId":"trig_...","routineToken":"sk-ant-oat01-..."}}}`
+4. Deploy. The webhook endpoint is `https://<your-project>.vercel.app/api/webhook` — that's the `url` to register on pm-system.
+
+No `vercel.json` needed — Vercel auto-detects `/api/webhook.js` as a function.
 
 ### Registering the pm-system webhook
 
