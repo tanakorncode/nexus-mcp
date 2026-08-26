@@ -133,6 +133,9 @@ async function renderRepoTable() {
       renderRepoTable();
     });
     removeGroupBtn.addEventListener("click", () => {
+      const name = group.projectName ?? "(ยังไม่ได้เลือก Project)";
+      const count = group.entries.length;
+      if (!confirm(`ลบ mapping ทั้งหมดของ "${name}" (${count} รายการ)? ยังไม่มีผลจนกว่าจะกด Save`)) return;
       const indices = new Set(group.entries.map((e) => e.i));
       repoMap = repoMap.filter((_, i) => !indices.has(i));
       renderRepoTable();
@@ -192,6 +195,10 @@ async function renderRepoTable() {
         }
       });
       removeBtn.addEventListener("click", () => {
+        // Only worth confirming if there's actually something to lose — an
+        // empty row someone just added by mistake shouldn't need a prompt.
+        const hasData = row.repoName || row.path?.trim();
+        if (hasData && !confirm(`ลบ mapping นี้ (${row.repoName ?? "ทั้งโปรเจก"} → ${row.path || "(ยังไม่ได้ตั้ง path)"})?`)) return;
         repoMap.splice(i, 1);
         renderRepoTable();
       });
