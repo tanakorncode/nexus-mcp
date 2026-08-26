@@ -41,17 +41,36 @@ function save(userDataDir, settings) {
   fs.writeFileSync(storePath(userDataDir), JSON.stringify(settings, null, 2), "utf8");
 }
 
-// What's still missing before a connection can even be attempted — kept
-// separate from connection status itself (unconfigured vs. configured-
-// but-can't-reach-the-server are different problems with different fixes).
-function missingFields(settings) {
+// Only what the socket itself actually needs. repoMap/command are NOT
+// here on purpose — they decide what happens once an event arrives, they
+// have nothing to do with whether a connection can be opened. Gating the
+// socket on repoMap too meant "no repo mapped yet" looked identical to
+// "can't reach the server", which is a different problem with a different
+// fix — this was a real bug, not a design nuance.
+function missingConnectionFields(settings) {
   const missing = [];
   if (!settings.serverUrl) missing.push("Server");
   if (!settings.memberId) missing.push("Nexus member id");
   if (!settings.secret) missing.push("Shared secret");
+  return missing;
+}
+
+// Beyond connecting: what's needed to actually do anything useful once
+// connected. Missing these doesn't stop the socket from connecting — it
+// just means handleEvent() has nothing to route an incoming event to.
+function missingWorkFields(settings) {
+  const missing = [];
   if (!settings.command) missing.push("Command");
   if (!settings.repoMap?.length) missing.push("Repo mapping (อย่างน้อย 1 อัน)");
   return missing;
+}
+
+function missingFields(settings) {
+  return [...missingConnectionFields(settings), ...missingWorkFields(settings)];
+}
+
+function canConnect(settings) {
+  return missingConnectionFields(settings).length === 0;
 }
 
 function isConfigured(settings) {
@@ -66,4 +85,4 @@ function resolveWorkDir(settings, repoName) {
   return match?.path ?? null;
 }
 
-module.exports = { load, save, isConfigured, missingFields, resolveWorkDir, PRESETS, DEFAULTS };
+module.exports = { load, save, isConfigured, canConnect, missingFields, resolveWorkDir, PRESETS, DEFAULTS };

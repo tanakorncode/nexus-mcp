@@ -48,7 +48,7 @@ function trayIcon(status) {
 // as the same gray dot made that impossible to tell apart.
 function currentStatus() {
   const settings = getSettings();
-  if (!store.isConfigured(settings)) return "idle";
+  if (!store.canConnect(settings)) return "idle";
   if (!settings.enabled) return "paused";
   return connectionStatus;
 }
@@ -149,13 +149,16 @@ function handleEvent(msg) {
 function reconnect() {
   client?.stop();
   const settings = getSettings();
-  if (!store.isConfigured(settings)) {
+  if (!store.canConnect(settings)) {
     connectionStatus = "idle";
     connectionDetail = "";
-    log.log(`not connecting — settings incomplete, missing: ${store.missingFields(settings).join(", ")}`);
+    log.log(`not connecting — missing: ${store.missingFields(settings).join(", ")}`);
     updateTrayTitle();
     broadcastStatus();
     return;
+  }
+  if (!store.isConfigured(settings)) {
+    log.log(`connecting anyway despite incomplete work config (${store.missingFields(settings).join(", ")}) — socket only needs server/memberId/secret, events just won't have anywhere to route yet`);
   }
   log.log(`connecting to ${settings.serverUrl} as memberId=${settings.memberId}`);
   client = new ReconnectingClient({
@@ -256,9 +259,11 @@ app.whenReady().then(() => {
   tray.on("click", () => tray.popUpContextMenu());
 
   const settings = getSettings();
-  if (!store.isConfigured(settings)) {
+  if (!store.canConnect(settings)) {
     openSettingsWindow();
   } else {
+    // Connects even if repoMap/command aren't set yet — those only affect
+    // what happens once an event arrives, not whether the socket can open.
     reconnect();
   }
 
