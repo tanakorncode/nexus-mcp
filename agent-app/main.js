@@ -5,6 +5,7 @@ const { ReconnectingClient } = require("./lib/ws-client");
 const { summarize } = require("./lib/summarize");
 const { runJob } = require("./lib/runner");
 const { resolveIdentity } = require("./lib/nexus-identity");
+const history = require("./lib/history");
 
 let tray = null;
 let settingsWindow = null;
@@ -19,6 +20,9 @@ function getSettings() {
 
 function saveSettings(next) {
   store.save(app.getPath("userData"), next);
+  // Re-applies retention immediately (e.g. lowering it from 7 to 1 day)
+  // instead of waiting for the next app restart.
+  history.loadHistory(app.getPath("userData"), next.historyRetentionDays);
   reconnect();
 }
 
@@ -104,6 +108,7 @@ function handleEvent(msg) {
       job.done = result;
       progressWindow?.webContents.send("job:done", { id: job.id, result });
       updateTrayTitle();
+      history.appendJob(app.getPath("userData"), job);
     },
   });
 }
@@ -187,6 +192,13 @@ ipcMain.handle("identity:resolve", async () => {
 app.whenReady().then(() => {
   if (process.platform === "darwin") app.dock?.hide();
   app.setLoginItemSettings({ openAtLogin: true });
+
+  const settingsAtStartup = getSettings();
+  const pastJobs = history.loadHistory(app.getPath("userData"), settingsAtStartup.historyRetentionDays);
+  // Newest first, matching recentJobs' own ordering (unshift on new jobs).
+  for (const entry of pastJobs.slice().reverse()) {
+    recentJobs.push({ id: entry.id, prompt: entry.prompt, lines: entry.lines, done: entry.done });
+  }
 
   tray = new Tray(trayIcon());
   buildAndSetMenu();

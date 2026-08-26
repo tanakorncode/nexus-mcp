@@ -21,6 +21,7 @@ const DEFAULTS = {
   // { repoName, path }, matched against the event's task.repository.name.
   repoMap: [],
   enabled: true,
+  historyRetentionDays: 7,
 };
 
 function storePath(userDataDir) {

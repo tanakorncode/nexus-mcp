@@ -19,6 +19,7 @@ notify-server --WebSocket--> Nexus Agent (this app) --spawns--> your AI CLI, in 
    - **Server**: defaults to the team's `notify-server` address, only change if told to
    - **AI ที่จะใช้**: pick a preset (Claude Code / Codex / Gemini CLI) or "Custom" to write your own command
    - **โฟลเดอร์โปรเจกต์**: add one row per repo you work in — matched against the task's repo name in Nexus, so events for a repo you haven't mapped are safely skipped rather than run in the wrong folder
+   - **เก็บประวัติ Activity ไว้กี่วัน**: 1/3/7 days — completed jobs older than this are pruned from `history.jsonl` (in the app's userData folder) the next time the app starts or settings are saved
 4. Click **Test** to confirm the command runs before saving — catches "command not found" immediately instead of only failing silently later when a real task comes in (tests against the first mapped repo's folder).
 5. **Save**. The app starts at login from now on (tray icon), reconnects automatically if your laptop sleeps or the network drops.
 

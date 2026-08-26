@@ -72,6 +72,7 @@ async function init() {
   $("secret").value = settings.secret;
   $("preset").value = settings.preset;
   $("command").value = settings.command;
+  $("historyRetentionDays").value = String(settings.historyRetentionDays ?? 7);
   repoMap = (settings.repoMap ?? []).map((r) => ({ ...r }));
   renderRepoTable();
 
@@ -114,6 +115,7 @@ $("saveBtn").addEventListener("click", async () => {
     secret: $("secret").value.trim(),
     preset: $("preset").value,
     command: $("command").value.trim(),
+    historyRetentionDays: Number($("historyRetentionDays").value),
     repoMap: repoMap.filter((r) => r.repoName.trim() && r.path.trim()),
   });
   window.close();
