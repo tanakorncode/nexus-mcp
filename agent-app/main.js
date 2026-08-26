@@ -130,7 +130,8 @@ function pushLine(job, line) {
 
 function notify(title, body) {
   if (!Notification.isSupported()) return;
-  const n = new Notification({ title, body });
+  const time = new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const n = new Notification({ title, body: `[${time}] ${body}` });
   n.on("click", () => openProgressWindow());
   n.show();
 }
