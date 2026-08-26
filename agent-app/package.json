@@ -27,10 +27,10 @@
       "windows/**/*",
       "assets/**/*"
     ],
+    "icon": "assets/icon-1024.png",
     "mac": {
       "target": "dmg",
-      "category": "public.app-category.developer-tools",
-      "icon": "assets/icon-16.png"
+      "category": "public.app-category.developer-tools"
     },
     "win": {
       "target": "nsis"
