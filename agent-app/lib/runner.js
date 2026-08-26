@@ -15,7 +15,16 @@ function runJob({ command, workDir, prompt, onLine, onDone }) {
     return { kill: () => {} };
   }
 
-  const child = spawn(cmd, args, { cwd: workDir || undefined, shell: false });
+  // Piping stdout/stderr (to capture them here) means the child sees a
+  // non-TTY and most well-behaved CLIs — claude included, being Node-based
+  // — silently drop their own color output as a result. FORCE_COLOR is the
+  // de-facto Node ecosystem convention (chalk, ansi-colors, picocolors all
+  // respect it) to override that auto-detection.
+  const child = spawn(cmd, args, {
+    cwd: workDir || undefined,
+    shell: false,
+    env: { ...process.env, FORCE_COLOR: "1" },
+  });
   let buffer = "";
 
   const flush = (chunk, isErr) => {
