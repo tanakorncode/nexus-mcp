@@ -9,6 +9,10 @@ metadata:
 
 > Written for teams using **nexus-mcp / Nexus PM**, same caveat as `nexus-pick-up-task` — tool names below only exist if that's what's connected. Read that skill too; this one exists because a task that's under-specified at creation time is unrecoverable later — `nexus-pick-up-task` can't invent structure that was never set.
 
+## Who this is for
+
+`create_task` is role-gated server-side (ADMIN/PM/BA can; DEV/QA/MEMBER/VIEWER can't) — this isn't a convention to follow, it's enforced. If `create_task` comes back `403 FORBIDDEN`, that's the acting person's role, not a bug to route around: say so plainly and suggest they ask a PM/BA/ADMIN to create it (or run this skill themselves), rather than retrying or trying `update_task` on some other task as a workaround.
+
 ## Why this matters
 
 Everything `nexus-pick-up-task` relies on to find "the right task" and "what it's blocked on" is set **once, at creation time, by whoever plans the work** — not inferred automatically. A task created without a `repositoryId` is invisible to repo-scoped queries forever, not just until someone notices. Fix it at the source.
