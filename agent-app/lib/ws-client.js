@@ -57,8 +57,18 @@ class ReconnectingClient {
       this._scheduleReconnect();
     });
 
-    ws.on("error", () => {
-      // "close" always follows "error" for ws; reconnect scheduled there.
+    ws.on("error", (err) => {
+      // "close" always follows "error" for ws, so reconnect is scheduled
+      // there — this only logs the actual reason (connection refused, DNS
+      // failure, timeout, etc.), which "close" alone never carries.
+      //
+      // Node's own dual-stack (IPv4+IPv6) connection attempts surface as an
+      // AggregateError with an EMPTY top-level .message — the real reason
+      // (e.g. "connect ECONNREFUSED 127.0.0.1:8092") is one level down, in
+      // .errors[]. Fall back through the shapes actually seen in practice
+      // rather than trust .message alone.
+      const detail = err.message || err.errors?.[0]?.message || err.code || String(err);
+      console.error(`[ws-client] connection error: ${detail}`);
     });
   }
 

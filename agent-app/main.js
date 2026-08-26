@@ -93,6 +93,7 @@ function handleEvent(msg) {
     return;
   }
 
+  console.log(`[main] ${msg.event} matched repo "${repoName}" -> running in ${workDir}`);
   const job = { id: `${Date.now()}`, prompt, lines: [], done: null };
   recentJobs.unshift(job);
   if (recentJobs.length > 20) recentJobs.pop();
@@ -118,9 +119,11 @@ function reconnect() {
   const settings = getSettings();
   if (!store.isConfigured(settings)) {
     connectionStatus = "not configured";
+    console.log("[main] not connecting — settings incomplete (need memberId, secret, serverUrl, and at least one repo mapped)");
     updateTrayTitle();
     return;
   }
+  console.log(`[main] connecting to ${settings.serverUrl} as memberId=${settings.memberId}`);
   client = new ReconnectingClient({
     url: settings.serverUrl,
     memberId: settings.memberId,
@@ -128,6 +131,10 @@ function reconnect() {
     onEvent: handleEvent,
     onStatus: (status) => {
       connectionStatus = status;
+      console.log(`[main] connection status: ${status}`);
+      if (status === "unauthorized") {
+        console.error("[main] server rejected memberId/secret — check both match what notify-server expects, then re-save settings");
+      }
       updateTrayTitle();
     },
   });
