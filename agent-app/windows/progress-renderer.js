@@ -97,9 +97,18 @@ retryBtn.addEventListener("click", async () => {
   }
 });
 
-function upsert(job) {
+// follow: true means "this is a live arrival, jump the log pane to it" —
+// used for onJobNew only. History hydration (getRecentJobs) relies on
+// arriving newest-first so the first upsert() (which trips the
+// activeId===null branch) already lands on the newest job; onJobNew jobs
+// arrive one at a time long after that, so without an explicit follow the
+// log pane just stayed frozen on whatever was selected when the window
+// opened — the sidebar list kept updating (new entries, pulsing dot), but
+// the pane everyone's actually watching didn't, which is exactly what
+// looked like "Activity doesn't update live, only close+reopen shows it".
+function upsert(job, { follow = false } = {}) {
   jobs.set(job.id, job);
-  if (activeId === null) activeId = job.id;
+  if (activeId === null || follow) activeId = job.id;
   renderJobList();
   if (activeId === job.id) renderLog();
 }
@@ -114,7 +123,7 @@ window.nexusAgent.getRecentJobs().then((recent) => {
   document.getElementById("empty").textContent = `โหลดรายการงานไม่สำเร็จ: ${err.message}`;
 });
 
-window.nexusAgent.onJobNew((job) => upsert(job));
+window.nexusAgent.onJobNew((job) => upsert(job, { follow: true }));
 
 window.nexusAgent.onJobLine(({ id, line }) => {
   const job = jobs.get(id);
