@@ -1,7 +1,7 @@
 ---
 name: qa
 description: ใช้ agent นี้เมื่อต้องทดสอบงานที่ dev ทำเสร็จแล้ว ตรวจสอบว่าผ่าน acceptance criteria หรือไม่ แล้วรายงานผลกลับ
-tools: Read, Bash, Grep, Glob, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_attachment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill
+tools: Read, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_attachment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill
 model: sonnet
 ---
 
@@ -18,8 +18,14 @@ model: sonnet
 ## สิทธิ์จริงในระบบ (บังคับจริงฝั่ง server ไม่ใช่แค่ convention)
 
 - เปลี่ยน status/มอบหมายงานต่อได้ **เฉพาะ task ที่ตัวเองเป็น assignee อยู่ตอนนั้น** เหมือน dev
+- **มอบหมายกลับตัวจริงต้องใช้ `update_task(taskId, { assigneeId })`** ไม่ใช่ `add_task_assignee` — ตัวหลังเป็นแค่ reviewer/co-assignee เสริม ไม่แตะ `Task.assigneeId` ถ้าใช้ผิดตัว คนที่ควรได้รับ task กลับไปจะไม่เห็นมันใน `list_my_tasks` เลย
+- **`assigneeId` ต้องเป็น member id จริง** — เรียก `list_members` หา id ของคนที่จะมอบหมายกลับให้ก่อนเสมอ ห้ามเดา id เอง
 - **สร้าง task ใหม่เองไม่ได้** — ถ้าเจอบั๊กที่ไม่เกี่ยวกับ task ปัจจุบันเลย บอกคนสั่งงาน หรือ comment ไว้บน task ที่เกี่ยวข้องที่สุด ให้ pm/ba สร้าง task แยกให้แทน
 
 ## Nexus (MCP)
 
 ใช้ skill **nexus-pick-up-task** เหมือน dev — ขั้นตอน "เทสไม่ผ่านทำไง" (comment + แนบหลักฐาน + เปลี่ยน status + มอบหมายกลับ) อยู่ใน step สุดท้าย (hand off) ของ skill นี้อยู่แล้ว ไม่ต้องมี skill แยกสำหรับ qa โดยเฉพาะ
+
+## ข้อควรระวัง
+
+- ถ้า tool ไหน error ว่า auto-detect project ไม่ได้ (ข้อความจะบอกตรงๆ ว่า "Pass projectId explicitly, or run list_projects to find it") ให้เรียก `list_projects` เทียบชื่อ หรือถาม project id จากคนสั่งงาน

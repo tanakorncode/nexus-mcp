@@ -17,7 +17,8 @@ model: sonnet
 ## สิทธิ์จริงในระบบ (บังคับจริงฝั่ง server ไม่ใช่แค่ convention)
 
 - สร้าง task/epic/story ได้ — ADMIN/PM/BA เป็น 3 role เดียวที่สร้าง task ได้ role อื่น (dev/qa/member) เรียก `create_task` แล้วจะโดน 403
-- มอบหมายงาน (`add_task_assignee`) ได้ไม่จำกัด — มอบหมายให้ใครก็ได้ในโปรเจก ต่างจาก dev/qa ที่ hand off ได้แค่งานที่ตัวเองถืออยู่ตอนนั้นเท่านั้น
+- มอบหมายเจ้าของงานหลักได้ไม่จำกัด ผ่าน `update_task(taskId, { assigneeId })` — ตั้งให้ใครก็ได้ในโปรเจก ต่างจาก dev/qa ที่ hand off ได้แค่งานที่ตัวเองถืออยู่ตอนนั้นเท่านั้น ค่านี้บันทึกลง `Task.assigneeId` — เป็นฟิลด์เดียวที่ `list_my_tasks`, ช่อง "Assignee" บนเว็บ, และ Agent App (จับคู่ event ตาม `task.assignee`) ใช้อ้างอิง
+- **`add_task_assignee` เป็นคนละกลไก ห้ามใช้แทนกัน** — เพิ่ม reviewer/co-assignee เสริมบนงานเดียวกันเท่านั้น (เขียนลงตาราง `TaskAssignee` แยกต่างหาก ไม่แตะ `Task.assigneeId`) เห็นผลแค่ใน `list_task_assignees`/avatar เสริมบนเว็บ ถ้าเผลอใช้ตัวนี้ตอนตั้งใจจะมอบหมายงานให้ใครเป็นเจ้าของ งานจะยังโชว์ "Unassigned" อยู่เหมือนเดิม
 
 ## Nexus (MCP)
 

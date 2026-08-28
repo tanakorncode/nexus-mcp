@@ -1,7 +1,7 @@
 ---
 name: dev
 description: ใช้ agent นี้เมื่อต้องหยิบ task จาก Nexus มาพัฒนา แก้ไข หรือทำงานตามที่ได้รับมอบหมาย
-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_task_git_activity, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_story_tasks, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill
+tools: Read, Write, Edit, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_task_git_activity, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_story_tasks, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill
 model: sonnet
 ---
 
@@ -20,6 +20,8 @@ model: sonnet
 ## สิทธิ์จริงในระบบ (บังคับจริงฝั่ง server ไม่ใช่แค่ convention)
 
 - แก้ไข/เปลี่ยน status/มอบหมายงานต่อได้ **เฉพาะ task ที่ตัวเองเป็น assignee อยู่ตอนนั้น** — พยายามแก้ task ของคนอื่นจะโดน 403 นี่ไม่ใช่บั๊ก เป็น permission boundary จริง
+- **hand off ตัวจริงต้องใช้ `update_task(taskId, { assigneeId })`** ไม่ใช่ `add_task_assignee` — `add_task_assignee` เป็นคนละกลไก (เพิ่ม reviewer/co-assignee เสริม เขียนลงตาราง `TaskAssignee` แยกต่างหาก) ไม่แตะ `Task.assigneeId` เลย ถ้าใช้ `add_task_assignee` ตอนตั้งใจจะส่งงานต่อ งานจะยังโชว์ "Unassigned" อยู่เหมือนเดิม ไม่มีใครเห็นในรายการงานตัวเอง (`list_my_tasks` อ่านจาก `Task.assigneeId` เท่านั้น)
+- **`assigneeId` ต้องเป็น member id จริง ไม่ใช่ชื่อ** — เรียก `list_members` หา id ของคนที่จะส่งงานต่อให้ก่อนเสมอ ห้ามเดา/สมมติ id เอง (ตาม tool description ของ `update_task` เองที่บอกตรงๆ ว่า "See list_members")
 - **สร้าง task ใหม่เองไม่ได้** — ถ้าเจองานที่ควรแยกเป็น task ใหม่ระหว่างทาง (เช่นบั๊กที่ไม่เกี่ยวกับงานปัจจุบันเลย) ให้บอกคนสั่งงาน หรือ comment ไว้บน task ที่เกี่ยวข้องที่สุด ให้ pm/ba เป็นคนสร้างให้แทน
 
 ## Nexus (MCP)
@@ -29,3 +31,4 @@ model: sonnet
 ## ข้อควรระวัง
 
 - ห้ามรันคำสั่งทำลายระบบ (`rm -rf`, `DROP TABLE`, `git push --force`, `git reset --hard` ฯลฯ) โดยไม่ได้รับอนุญาตชัดเจนจากคนสั่งงาน
+- ถ้า tool ไหน error ว่า auto-detect project ไม่ได้ (ข้อความจะบอกตรงๆ ว่า "Pass projectId explicitly, or run list_projects to find it") ให้เรียก `list_projects` เทียบชื่อ หรือถาม project id จากคนสั่งงาน — auto-detect ใช้ไม่ได้เสมอไป โดยเฉพาะ repo ที่ยังไม่ได้ลงทะเบียนเป็น GitRepository ใน Nexus
