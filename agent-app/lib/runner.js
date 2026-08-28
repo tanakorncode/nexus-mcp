@@ -1,6 +1,23 @@
 const { spawn } = require("child_process");
 const { buildCommand } = require("./command");
 
+// claude --output-format json prints exactly one JSON object (type:
+// "result") to stdout when it finishes — no trailing text, no partial
+// lines. Anything else (plain-text presets, a run that never reached
+// --output-format json, output that got corrupted) just isn't that
+// shape, and this returns null so the caller falls back to treating
+// stdout as plain log lines the way it always did.
+function parseResultJson(stdout) {
+  const trimmed = stdout.trim();
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && parsed.type === "result" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 // Runs the configured command for one event, streaming raw stdout lines to
 // onLine as they arrive (so a progress window can show live output) and
 // reporting completion via onDone. Deliberately shell: false — see
@@ -34,9 +51,17 @@ function runJob({ command, workDir, prompt, onLine, onDone }) {
     stdio: ["ignore", "pipe", "pipe"],
   });
   let buffer = "";
+  let stdoutFull = ""; // kept whole, separate from the line-buffer above —
+  // needed to parse `--output-format json`'s single result blob on close.
+  // Exit code alone can't be trusted for that: claude exits 0 even when a
+  // tool call was denied mid-run and the model just talked around it,
+  // which is exactly the "Activity says done, but nothing happened"
+  // report this exists to catch.
 
   const flush = (chunk, isErr) => {
-    buffer += chunk.toString();
+    const text = chunk.toString();
+    if (!isErr) stdoutFull += text;
+    buffer += text;
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? "";
     for (const line of lines) onLine(isErr ? `[stderr] ${line}` : line);
@@ -57,9 +82,28 @@ function runJob({ command, workDir, prompt, onLine, onDone }) {
     if (cancelled) {
       onLine("[cancelled by user]");
       onDone({ ok: false, cancelled: true });
-    } else {
-      onDone({ ok: code === 0, exitCode: code });
+      return;
     }
+
+    // Only claude's --output-format json produces this shape; other
+    // presets (Codex, Gemini CLI, a custom command with plain text
+    // output) just fail to parse here and fall through to the old
+    // exit-code-only behavior below, unchanged.
+    const structured = parseResultJson(stdoutFull);
+    if (structured) {
+      const { is_error, permission_denials, result, subtype } = structured;
+      const denied = permission_denials?.length ? permission_denials : [];
+      const ok = code === 0 && !is_error && denied.length === 0;
+      if (denied.length) {
+        const names = denied.map((d) => d.tool_name).join(", ");
+        onLine(`[blocked] permission denied for: ${names} — nobody was present to approve; add the tool to --allowedTools if this should be unattended`);
+      }
+      if (result) onLine(result);
+      onDone({ ok, exitCode: code, subtype, blockedTools: denied.map((d) => d.tool_name) });
+      return;
+    }
+
+    onDone({ ok: code === 0, exitCode: code });
   });
 
   return {

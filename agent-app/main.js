@@ -147,7 +147,12 @@ function startJob(prompt, workDir) {
   progressWindow?.webContents.send("job:new", job);
   updateTrayTitle();
 
-  const taskLine = prompt.split("\n")[0];
+  // summarize.js prepends an unattended-run header before the actual
+  // "[Nexus] ..." line now (see lib/summarize.js) — plain split("\n")[0]
+  // would grab that header instead of anything recognizable as the task.
+  // Fall back to the raw first line for prompts that never had the header
+  // (e.g. the Settings window's own "Test" button prompt).
+  const taskLine = prompt.split("\n").find((l) => l.startsWith("[Nexus]")) ?? prompt.split("\n")[0];
   notify("Nexus Agent — เริ่มทำงานใหม่", taskLine);
 
   const handle = runJob({
@@ -161,12 +166,20 @@ function startJob(prompt, workDir) {
       progressWindow?.webContents.send("job:done", { id: job.id, result });
       updateTrayTitle();
       history.appendJob(app.getPath("userData"), job);
-      const title = result.cancelled
-        ? "Nexus Agent — ยกเลิกแล้ว"
-        : result.ok
-          ? "Nexus Agent — เสร็จแล้ว"
-          : "Nexus Agent — ล้มเหลว";
-      notify(title, taskLine);
+      if (result.cancelled) {
+        notify("Nexus Agent — ยกเลิกแล้ว", taskLine);
+      } else if (result.blockedTools?.length) {
+        // Distinct from a plain failure: the run *reported* success
+        // (claude often exits 0 and talks around a denied tool call
+        // instead of erroring) but never actually did the Nexus-side
+        // work, because nobody was present to approve a tool call that
+        // wasn't in --allowedTools. "ล้มเหลว" alone doesn't say why;
+        // this is the whole point of parsing --output-format json's
+        // permission_denials instead of trusting the exit code.
+        notify("Nexus Agent — ถูกบล็อกสิทธิ์", `${taskLine}\nไม่ได้รับอนุญาตให้ใช้: ${result.blockedTools.join(", ")}`);
+      } else {
+        notify(result.ok ? "Nexus Agent — เสร็จแล้ว" : "Nexus Agent — ล้มเหลว", taskLine);
+      }
     },
   });
   jobKillHandles.set(job.id, handle.kill);

@@ -16,7 +16,12 @@ const PRESETS = {
   // pre-approved for every event (including ones carrying attacker-
   // adjacent task/comment content) is a materially bigger blast radius
   // than pre-approving one known MCP server's own tools.
-  "Claude Code": 'claude --allowedTools "mcp__nexus-mcp__*" -p "{{prompt}}"',
+  // --output-format json (verified this ordering too) is what lets
+  // runner.js tell a run that *reported* success from one that actually
+  // did the work — claude often exits 0 and just talks around a denied
+  // tool call rather than erroring, so exit code alone can't catch that.
+  // See runner.js's parseResultJson/permission_denials handling.
+  "Claude Code": 'claude --allowedTools "mcp__nexus-mcp__*" --output-format json -p "{{prompt}}"',
   Codex: 'codex exec "{{prompt}}"',
   "Gemini CLI": 'gemini -p "{{prompt}}"',
   Custom: "",
