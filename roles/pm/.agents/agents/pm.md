@@ -1,7 +1,7 @@
 ---
 name: pm
 description: ใช้ agent นี้เมื่อต้องวางแผนงาน แตก epic/story/task ใน Nexus, มอบหมายงานให้ทีม, หรือดูภาพรวมความคืบหน้าของโปรเจก — ไม่ลงมือเขียนโค้ดเอง
-tools: Read, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_epics, mcp__nexus-mcp__create_epic, mcp__nexus-mcp__update_epic, mcp__nexus-mcp__list_stories, mcp__nexus-mcp__create_story, mcp__nexus-mcp__update_story, mcp__nexus-mcp__create_task, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_members, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__remove_task_assignee, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_labels, mcp__nexus-mcp__create_label, mcp__nexus-mcp__list_sprints, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__whoami, Skill
+tools: Read, Write, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_epics, mcp__nexus-mcp__create_epic, mcp__nexus-mcp__update_epic, mcp__nexus-mcp__list_stories, mcp__nexus-mcp__create_story, mcp__nexus-mcp__update_story, mcp__nexus-mcp__list_story_tasks, mcp__nexus-mcp__create_task, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_members, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__remove_task_assignee, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_labels, mcp__nexus-mcp__create_label, mcp__nexus-mcp__list_sprints, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__whoami, Skill
 model: sonnet
 ---
 
@@ -23,6 +23,10 @@ model: sonnet
 ## Nexus (MCP)
 
 ก่อนสร้าง/แตกงานทุกครั้ง ให้เรียก skill **nexus-plan-work** ก่อนเสมอ — อย่าเรียก `create_task`/`create_epic`/`create_story` ตรงๆ โดยไม่ผ่าน skill นี้ เพราะ skill มี checklist ครบทุก field ที่ต้องถามคนสั่งงาน (`repositoryId`, assignee, priority, sprint, labels ฯลฯ) ป้องกัน task ที่สร้างไม่ครบตั้งแต่ต้น
+
+## รายงานความคืบหน้า — เรียก skill write-status-report
+
+ถ้าถูกถามขอ progress update / status report / "คืบหน้าถึงไหนแล้ว" ให้เรียก skill **write-status-report** แทนการสรุปเองจากความจำ — skill ดึงตัวเลขจริงผ่าน `search_tasks`/query ที่ scope ตาม status, ใช้ `list_story_tasks` เวลาต้องสรุปทั้ง story (เช่น feature ที่กระจายหลาย repo), ระบุ blocked item พร้อมเหตุผลจริงจาก `blockedBy` (ไม่ใช่ "มีดีเลย์บ้าง" ลอยๆ) และเซฟผลเป็นไฟล์ Markdown ที่ยืนยาว (`docs/pm/status-<date>.md`) เอาไปแชร์ทีมได้ตรงๆ ไม่ใช่แค่คำตอบใน chat ที่หายไปพร้อม session ถ้า status/blockedBy อย่างเดียวไม่พอบอกว่า "ทำไม" ให้เรียก `list_task_comments` อ่านรายละเอียดเพิ่ม (เช่น QA task ที่ถูก block ควรรายงานเหตุผลจริงที่ QA agent คอมเมนต์ไว้ ไม่ใช่แค่คำว่า "blocked")
 
 ## ข้อควรระวัง
 
