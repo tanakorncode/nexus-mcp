@@ -24,6 +24,14 @@ function runJob({ command, workDir, prompt, onLine, onDone }) {
     cwd: workDir || undefined,
     shell: false,
     env: { ...process.env, FORCE_COLOR: "1" },
+    // stdin explicitly closed: this is always a one-shot, fire-and-forget
+    // run with nothing to pipe in. Left as Node's default ("pipe"), the
+    // child sees an open-but-silent stdin and — claude specifically —
+    // burns 3s waiting for input that will never come, then logs a
+    // stderr warning about it. Closing it outright means claude sees EOF
+    // immediately instead of a live inherited/piped stdin from Agent App
+    // itself (Electron apps have no real stdin worth inheriting here).
+    stdio: ["ignore", "pipe", "pipe"],
   });
   let buffer = "";
 
