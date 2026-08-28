@@ -26,7 +26,14 @@ function jobTime(job, opts) {
 
 function renderJobList() {
   jobsEl.innerHTML = "";
-  for (const job of [...jobs.values()].reverse()) {
+  // Sort by id (a Date.now() string) descending, newest first — not
+  // Map insertion order. History hydration inserts newest-first (from
+  // getRecentJobs()) while a live onJobNew insert always lands last in
+  // Map iteration order (Map.set on a new key always appends), so the
+  // two paths disagree about what "insertion order" even means; sorting
+  // by the actual timestamp is the only way both end up consistent.
+  const sorted = [...jobs.values()].sort((a, b) => Number(b.id) - Number(a.id));
+  for (const job of sorted) {
     const div = document.createElement("div");
     div.className = "job" + (job.id === activeId ? " active" : "");
     div.title = jobTime(job, { dateStyle: "medium", timeStyle: "medium" });
