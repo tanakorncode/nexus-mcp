@@ -2,7 +2,21 @@ const fs = require("fs");
 const path = require("path");
 
 const PRESETS = {
-  "Claude Code": 'claude -p "{{prompt}}"',
+  // --allowedTools before -p (not after) so its variadic argument list
+  // stops at the next flag instead of swallowing {{prompt}} — verified
+  // with a real `claude` invocation. Scoped to mcp__nexus-mcp__* only:
+  // unattended runs have no one to answer Claude Code's own permission
+  // prompt (a session-wide gate, separate from a subagent's own tools:
+  // allowlist), so any tool not pre-approved here just silently fails
+  // for every unattended job. This unblocks read-mostly roles (pm/ba/qa
+  // querying and commenting on tasks); a role that also needs to write
+  // files or run arbitrary Bash unattended (backend-dev/frontend-dev
+  // implementing something) still needs those tool names added too —
+  // deliberately not bundled in by default, since Bash/Write/Edit
+  // pre-approved for every event (including ones carrying attacker-
+  // adjacent task/comment content) is a materially bigger blast radius
+  // than pre-approving one known MCP server's own tools.
+  "Claude Code": 'claude --allowedTools "mcp__nexus-mcp__*" -p "{{prompt}}"',
   Codex: 'codex exec "{{prompt}}"',
   "Gemini CLI": 'gemini -p "{{prompt}}"',
   Custom: "",
