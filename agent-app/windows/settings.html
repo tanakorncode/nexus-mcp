@@ -125,6 +125,16 @@
   .ghost-link { background: transparent; border-color: transparent; color: var(--accent); padding: 2px 6px; text-transform: none; font-weight: 400; letter-spacing: normal; font-size: 11px; }
   .ghost-link:hover { background: var(--surface-2); border-color: var(--border); }
 
+  .checkbox-label {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    text-transform: none; font-weight: 400; letter-spacing: normal;
+    color: var(--text); font-size: 12.5px;
+  }
+  .checkbox-label input[type="checkbox"] {
+    width: 15px; height: 15px; accent-color: var(--accent-strong);
+    cursor: pointer; flex-shrink: 0;
+  }
+
   .actions {
     display: flex; justify-content: flex-end; gap: 8px;
     margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
@@ -176,6 +186,13 @@
         <label>Command</label>
         <input type="text" id="command" />
         <div class="hint">{{prompt}} จะถูกแทนที่ด้วยรายละเอียดงานอัตโนมัติ</div>
+      </div>
+      <div class="field">
+        <label class="checkbox-label">
+          <input type="checkbox" id="autoRetryEnabled" />
+          <span>ลองใหม่อัตโนมัติเมื่อล้มเหลว (สูงสุด 2 ครั้ง ห่างกันครั้งละ 90 วินาที)</span>
+        </label>
+        <div class="hint">ไม่ลองใหม่ถ้าเป็นการยกเลิกเอง หรือถูกบล็อกสิทธิ์ (--allowedTools) เพราะลองใหม่ไปก็เจอปัญหาเดิม — ปิดตัวนี้ถ้า command มีผลข้างเคียงที่ไม่อยากให้รันซ้ำโดยไม่มีคนตรวจก่อน</div>
       </div>
     </div>
 

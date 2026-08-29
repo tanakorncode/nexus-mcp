@@ -299,6 +299,7 @@ async function init() {
   $("preset").value = settings.preset;
   $("command").value = settings.command;
   $("historyRetentionDays").value = String(settings.historyRetentionDays ?? 7);
+  $("autoRetryEnabled").checked = settings.autoRetryEnabled !== false;
   repoMap = (settings.repoMap ?? []).map((r) => ({ ...r }));
   renderRepoTable();
   refreshUsageSummary();
@@ -344,6 +345,7 @@ $("saveBtn").addEventListener("click", async () => {
     preset: $("preset").value,
     command: $("command").value.trim(),
     historyRetentionDays: Number($("historyRetentionDays").value),
+    autoRetryEnabled: $("autoRetryEnabled").checked,
     repoMap: validRepoMap,
   });
 

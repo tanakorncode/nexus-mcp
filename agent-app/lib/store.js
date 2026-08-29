@@ -40,6 +40,7 @@ const DEFAULTS = {
   repoMap: [],
   enabled: true,
   historyRetentionDays: 7,
+  autoRetryEnabled: true,
 };
 
 function storePath(userDataDir) {

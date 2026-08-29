@@ -185,5 +185,12 @@ window.nexusAgent.onJobDone(({ id, result }) => {
           ? "\x1b[1m\x1b[32m✓ เสร็จแล้ว\x1b[0m"
           : `\x1b[1m\x1b[31m✗ ล้มเหลว (${result.error ?? `exit code ${result.exitCode}`})\x1b[0m`,
     );
+    // Without this, a failed job that's about to auto-retry just sits
+    // there looking permanently failed for the whole 90s wait — nothing
+    // else in this window hints that anything more is coming.
+    if (result.retryAt) {
+      const when = new Date(result.retryAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      appendLogLine(`\x1b[36mจะลองใหม่อัตโนมัติเวลา ${when}\x1b[0m`);
+    }
   }
 });

@@ -219,9 +219,38 @@ function runNow(job) {
       // calls onDone from both) — without this, the workDir lock could get
       // released and the next queued job started twice over.
       if (job.done !== null) return;
-      job.done = result;
       jobKillHandles.delete(job.id);
       if (workDir) workDirLocks.delete(workDir);
+
+      // Cancelled means the user chose to stop it — not transient, retrying
+      // would just run it again against their wishes. A permission block
+      // means --allowedTools is missing the tool; retrying hits the exact
+      // same wall every time until a person edits the command, so it isn't
+      // "transient" either. Everything else genuinely might be (a network
+      // blip, a momentary rate limit, claude itself hiccuping). Also
+      // respects the Settings toggle — a command with side effects (posts a
+      // comment, say) that only partly completed before failing shouldn't
+      // get silently re-run for someone who'd rather review it by hand.
+      const settingsNow = getSettings();
+      const retryEligible =
+        settingsNow.autoRetryEnabled !== false && !result.ok && !result.cancelled && !result.blockedTools?.length;
+      if (retryEligible && workDir && (job.retryCount ?? 0) < MAX_AUTO_RETRIES) {
+        const nextAttempt = (job.retryCount ?? 0) + 1;
+        // Stamped onto `result` itself (rather than a separate message) so
+        // it rides along through the exact same job:done IPC send and
+        // history.appendJob call below — the Activity window and history
+        // both already display/persist `result` as-is.
+        result.retryAt = Date.now() + RETRY_DELAY_MS;
+        setTimeout(() => {
+          // Re-checked at fire time, not schedule time — Enabled or the
+          // auto-retry toggle may have changed in the 90s since this failed.
+          const settingsAtFire = getSettings();
+          if (!settingsAtFire.enabled || settingsAtFire.autoRetryEnabled === false) return;
+          startJob(job.prompt, workDir, nextAttempt);
+        }, RETRY_DELAY_MS);
+      }
+
+      job.done = result;
       progressWindow?.webContents.send("job:done", { id: job.id, result });
       updateTrayTitle();
       history.appendJob(app.getPath("userData"), job);
@@ -239,22 +268,6 @@ function runNow(job) {
         notify("Nexus Agent — ถูกบล็อกสิทธิ์", `${taskLine}\nไม่ได้รับอนุญาตให้ใช้: ${result.blockedTools.join(", ")}`);
       } else {
         notify(result.ok ? "Nexus Agent — เสร็จแล้ว" : "Nexus Agent — ล้มเหลว", taskLine);
-      }
-      // Cancelled means the user chose to stop it — not transient, retrying
-      // would just run it again against their wishes. A permission block
-      // means --allowedTools is missing the tool; retrying hits the exact
-      // same wall every time until a person edits the command, so it isn't
-      // "transient" either. Everything else genuinely might be (a network
-      // blip, a momentary rate limit, claude itself hiccuping).
-      const retryEligible = !result.ok && !result.cancelled && !result.blockedTools?.length;
-      if (retryEligible && workDir && (job.retryCount ?? 0) < MAX_AUTO_RETRIES) {
-        const nextAttempt = (job.retryCount ?? 0) + 1;
-        setTimeout(() => {
-          // Re-checked at fire time, not schedule time — Enabled may have
-          // been switched off in the 90s since this failed.
-          if (!getSettings().enabled) return;
-          startJob(job.prompt, workDir, nextAttempt);
-        }, RETRY_DELAY_MS);
       }
       if (workDir) dequeueNext(workDir);
     },
