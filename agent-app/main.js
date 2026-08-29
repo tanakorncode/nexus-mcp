@@ -65,6 +65,7 @@ function saveSettings(next) {
   // Re-applies retention immediately (e.g. lowering it from 7 to 1 day)
   // instead of waiting for the next app restart.
   history.loadHistory(app.getPath("userData"), next.historyRetentionDays);
+  log.prune(next.historyRetentionDays);
   reconnect();
 }
 
@@ -460,6 +461,7 @@ app.whenReady().then(() => {
   app.setLoginItemSettings({ openAtLogin: true });
 
   const settingsAtStartup = getSettings();
+  log.prune(settingsAtStartup.historyRetentionDays);
   const pastJobs = history.loadHistory(app.getPath("userData"), settingsAtStartup.historyRetentionDays);
   // Newest first, matching recentJobs' own ordering (unshift on new jobs).
   for (const entry of pastJobs.slice().reverse()) {
