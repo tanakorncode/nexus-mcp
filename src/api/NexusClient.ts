@@ -552,6 +552,34 @@ export class NexusClient {
     return data;
   }
 
+  async createRepository(input: {
+    projectId: string;
+    name: string;
+    keyPrefix: string;
+    repoUrl: string;
+    repoNamespace: string;
+    gitlabProjectId?: number;
+  }): Promise<GitRepository> {
+    const { data } = await this.request<{ data: GitRepository }>("POST", "/api/v1/repositories", input);
+    return data;
+  }
+
+  async updateRepository(
+    repositoryId: string,
+    patch: { name?: string; active?: boolean; gitlabProjectId?: number | null },
+  ): Promise<GitRepository> {
+    const { data } = await this.request<{ data: GitRepository }>(
+      "PATCH",
+      `/api/v1/repositories/${repositoryId}`,
+      patch,
+    );
+    return data;
+  }
+
+  async deleteRepository(repositoryId: string): Promise<void> {
+    await this.request<void>("DELETE", `/api/v1/repositories/${repositoryId}`);
+  }
+
   // ── Members / identity ───────────────────────────────────────────────────
   // No /me endpoint exists on the public API — resolve "self" by matching the
   // email captured at login against /api/v1/members (requires members:read).

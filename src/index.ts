@@ -592,6 +592,76 @@ server.tool(
   },
 );
 
+server.tool(
+  "list_repositories",
+  "List git repositories registered in a project (or matching a repoUrl) — the repositoryId values tasks/create_task/update_task reference. See also get_current_repository, which resolves the repo for the current working directory specifically.",
+  {
+    projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo."),
+    repoUrl: z.string().optional().describe("Exact repoUrl match, e.g. to look up a repo's Nexus id from its git remote."),
+  },
+  async ({ projectId, repoUrl }) => {
+    try {
+      const id = await resolveProjectId(projectId);
+      return textResult(await client.listRepositories({ projectId: id, repoUrl }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "create_repository",
+  "Register a new git repository under a project — check list_repositories first, this errors if keyPrefix or repoUrl is already in use. keyPrefix becomes the task key prefix for tasks filed against this repo (e.g. 'PROJ' -> PROJ-1, PROJ-2, ...).",
+  {
+    projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo."),
+    name: z.string(),
+    keyPrefix: z.string().describe("2-8 uppercase letters, e.g. 'PROJ'. Normalized/uppercased server-side."),
+    repoUrl: z.string().describe("Git remote URL, must be unique across all projects."),
+    repoNamespace: z.string().describe("GitLab/GitHub namespace or group the repo lives under."),
+    gitlabProjectId: z.number().optional(),
+  },
+  async ({ projectId, ...rest }) => {
+    try {
+      const id = await resolveProjectId(projectId);
+      return textResult(await client.createRepository({ projectId: id, ...rest }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "update_repository",
+  "Change a repository's name, active flag, or gitlabProjectId. keyPrefix and repoUrl are immutable after creation — changing either would break existing task keys and git-activity linking.",
+  {
+    repositoryId: z.string(),
+    name: z.string().optional(),
+    active: z.boolean().optional().describe("Set false to stop this repo from being offered for new tasks, without deleting it."),
+    gitlabProjectId: z.number().nullable().optional(),
+  },
+  async ({ repositoryId, ...patch }) => {
+    try {
+      return textResult(await client.updateRepository(repositoryId, patch));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "delete_repository",
+  "Permanently delete a repository registration. Tasks that referenced it have their repositoryId cleared, not deleted — only the repo registration itself is removed. Prefer update_repository with active: false if you just want to stop new tasks from using it.",
+  { repositoryId: z.string() },
+  async ({ repositoryId }) => {
+    try {
+      await client.deleteRepository(repositoryId);
+      return textResult({ deleted: true });
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
 server.tool("list_members", "List team members sharing a project with the current user.", {}, async () => {
   try {
     return textResult(await client.listMembers());
