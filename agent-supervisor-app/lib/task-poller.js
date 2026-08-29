@@ -65,6 +65,21 @@ async function listReadyTasks(settings, { onSkip } = {}) {
 
       for (const task of page.json.data ?? []) {
         if (task.assignee) continue; // already someone's — not ours to touch
+        // A task with no description has nothing concrete for an unattended
+        // run to act on safely — no acceptance criteria, no scope, nothing
+        // to distinguish it from any other task that happens to sit in the
+        // same project. Claiming it anyway risks running real, unsupervised
+        // work against whatever the model guesses the title means (found
+        // this for real: several old placeholder tasks with titles like
+        // "Design Login Page" and no description at all, sitting unassigned
+        // in the same project as genuine nexus-demo work — a project-level
+        // workDir fallback can't tell those apart from real, in-scope
+        // tasks; refusing to claim anything with no real spec closes that
+        // gap regardless of how workDir resolution is configured).
+        if (!task.description || !task.description.trim()) {
+          skip(`${task.taskKey ?? task.id} ready but has no description — not claiming (nothing to act on safely, unattended)`);
+          continue;
+        }
         const workDir = store.resolveWorkDir(settings, task);
         if (!workDir) {
           skip(`${task.taskKey ?? task.id} ready but no local folder mapped for its repo/project — not claiming`);

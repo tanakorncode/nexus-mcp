@@ -3,9 +3,11 @@ const path = require("path");
 
 // Same command-template idea as agent-app — see command.js for why the
 // prompt is injected as a single argv element rather than interpolated
-// into a shell string.
+// into a shell string. stream-json --verbose (not plain json) so Activity
+// shows live progress instead of total silence until the whole run
+// finishes — see agent-app/lib/runner.js's formatStreamEvent for why.
 const PRESETS = {
-  "Claude Code": 'claude --allowedTools "mcp__nexus-mcp__*" --output-format json -p "{{prompt}}"',
+  "Claude Code": 'claude --allowedTools "mcp__nexus-mcp__*" --output-format stream-json --verbose -p "{{prompt}}"',
   Codex: 'codex exec "{{prompt}}"',
   "Gemini CLI": 'gemini -p "{{prompt}}"',
   Custom: "",
@@ -92,9 +94,18 @@ function supervisedProjectIds(settings) {
   return [...new Set((settings.repoMap ?? []).map((r) => r.projectId).filter(Boolean))];
 }
 
-// Identical matching order to agent-app's store.js: prefer an exact repo
-// match, fall back to a project-only row (repoName null) for a task with no
-// repository linked (pure planning/BA work never registered as a git repo).
+// Same overall shape as agent-app's store.js (exact repo match, then a
+// project-only fallback for a task with no repository linked), but the
+// fallback matches by projectId, not project name — deliberately different
+// from agent-app. agent-app's tasks arrive via notify-server's push
+// payload, built from pm-system's dispatch() calls that explicitly attach
+// `project: {id,name,key}` (see withProjectSummary in pm-system's route
+// source). task-poller.js's tasks come from plain GET /api/v1/tasks
+// instead, which never attaches a nested `project` object at all — only
+// `.projectId` (a plain scalar already on every task record) and `.url`.
+// Matching on project.name against that shape silently never matches
+// anything; projectId is always present and doesn't depend on the API
+// response including project details at all.
 function resolveWorkDir(settings, task) {
   const repoName = task?.repository?.name ?? null;
   if (repoName) {
@@ -102,9 +113,9 @@ function resolveWorkDir(settings, task) {
     if (match) return match.path;
   }
 
-  const projectName = task?.project?.name ?? null;
-  if (projectName) {
-    const match = settings.repoMap.find((r) => !r.repoName && r.projectName === projectName);
+  const projectId = task?.projectId ?? null;
+  if (projectId) {
+    const match = settings.repoMap.find((r) => !r.repoName && r.projectId === projectId);
     if (match) return match.path;
   }
 
