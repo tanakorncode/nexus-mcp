@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Nexus Supervisor — Activity</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, sans-serif; margin: 0; font-size: 12px; color: #c9d1d9; background: #0d1117; }
+  #titlebar {
+    display: flex; align-items: center; gap: 7px;
+    padding: 9px 14px; border-bottom: 1px solid #30363d;
+    font-size: 12.5px; font-weight: 600; color: #e6edf3; -webkit-app-region: drag;
+  }
+  #titlebar::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: #58a6ff; box-shadow: 0 0 8px #58a6ff;
+  }
+  #layout { display: flex; height: calc(100vh - 37px); }
+  #jobs { width: 220px; border-right: 1px solid #30363d; overflow-y: auto; background: #010409; flex-shrink: 0; }
+  .job { padding: 9px 10px; border-bottom: 1px solid #21262d; cursor: pointer; display: flex; align-items: flex-start; gap: 7px; }
+  .job:hover { background: #161b22; }
+  .job.active { background: #1c2333; border-left: 2px solid #58a6ff; }
+  .job .dot { margin-top: 4px; }
+  .job .job-body { min-width: 0; flex: 1; }
+  .job .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c9d1d9; }
+  .job .time { font-size: 10.5px; color: #6e7681; margin-top: 2px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.running { background: #d29922; box-shadow: 0 0 6px #d29922; animation: pulse 1.2s infinite; }
+  .dot.queued { background: #6e7681; }
+  .dot.ok { background: #3fb950; }
+  .dot.fail { background: #f85149; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  #log-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #log-header {
+    padding: 8px 12px; border-bottom: 1px solid #30363d; color: #8b949e;
+    font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: flex; align-items: center; gap: 10px;
+  }
+  #log-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  #cancelBtn {
+    flex-shrink: 0; display: none; font-family: inherit; font-size: 11px;
+    padding: 4px 10px; border-radius: 5px; cursor: pointer;
+    background: transparent; color: #f85149; border: 1px solid rgba(248,81,73,0.4);
+  }
+  #cancelBtn:hover { background: rgba(248,81,73,0.12); }
+  #retryBtn {
+    flex-shrink: 0; display: none; font-family: inherit; font-size: 11px;
+    padding: 4px 10px; border-radius: 5px; cursor: pointer;
+    background: transparent; color: #58a6ff; border: 1px solid rgba(88,166,255,0.4);
+  }
+  #retryBtn:hover { background: rgba(88,166,255,0.12); }
+  #log {
+    flex: 1; padding: 10px 12px; overflow-y: auto; overflow-x: auto;
+    white-space: pre; font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px; line-height: 1.5;
+  }
+  .logline { display: block; }
+  .logline.stderr { color: #ffa198; }
+  #empty {
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    color: #6e7681; font-size: 12.5px; text-align: center; padding: 0 30px;
+  }
+</style>
+</head>
+<body>
+  <div id="titlebar">Nexus Supervisor — Activity</div>
+  <div id="layout">
+    <div id="jobs"></div>
+    <div id="log-pane">
+      <div id="log-header">
+        <span id="log-header-text"></span>
+        <button id="retryBtn">รันใหม่</button>
+        <button id="cancelBtn">ยกเลิกงานนี้</button>
+      </div>
+      <div id="log"><div id="empty">ยังไม่มีงานเข้ามา — จะขึ้นที่นี่ทันทีที่มี event</div></div>
+    </div>
+  </div>
+  <script src="../lib/ansi-to-html.js"></script>
+  <script src="progress-renderer.js"></script>
+</body>
+</html>

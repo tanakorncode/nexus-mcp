@@ -1,0 +1,252 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Nexus Supervisor — Settings</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --text-faint: #6e7681;
+    --accent: #58a6ff;
+    --accent-strong: #388bfd;
+    --success: #3fb950;
+    --danger: #f85149;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  #app { padding: 20px 22px 16px; }
+  h1 {
+    font-size: 15px; font-weight: 600; margin: 0 0 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  h1::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  }
+  .subtitle { color: var(--text-dim); font-size: 11.5px; margin-bottom: 18px; }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    display: block; font-size: 11.5px; font-weight: 600;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em;
+    margin-bottom: 6px;
+  }
+  .hint { color: var(--text-faint); font-size: 11px; margin-top: 5px; line-height: 1.4; }
+
+  input[type="text"], input[type="number"], select {
+    width: 100%; box-sizing: border-box;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px;
+    padding: 7px 10px; font-size: 12.5px; font-family: inherit;
+    outline: none; transition: border-color 0.12s;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--text-faint); }
+  select { cursor: pointer; }
+
+  .row { display: flex; gap: 8px; align-items: stretch; }
+  .row input { flex: 1; min-width: 0; }
+  .row-2col { display: flex; gap: 10px; }
+  .row-2col .field { flex: 1; }
+
+  button {
+    font-family: inherit; font-size: 12.5px; font-weight: 500;
+    border-radius: 6px; padding: 7px 13px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+    transition: background 0.12s, border-color 0.12s;
+  }
+  button:hover { background: #262c36; border-color: #484f58; }
+  button.small { padding: 5px 10px; font-size: 11.5px; flex-shrink: 0; }
+  button.primary { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+  button.primary:hover { background: #4a94ff; }
+  button.danger-ghost { color: var(--danger); border-color: transparent; background: transparent; padding: 5px 8px; }
+  button.danger-ghost:hover { background: rgba(248,81,73,0.12); }
+
+  #repoTable { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+  .repo-group {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 8px; border: 1px solid var(--border); border-radius: 6px;
+  }
+  .repo-group-header { display: flex; flex-direction: column; gap: 6px; }
+  .repo-group-actions { display: flex; justify-content: flex-end; gap: 6px; }
+  .repo-group-actions button { flex-shrink: 0; }
+  .repo-group-header select { width: 100%; }
+  .repo-group-rows {
+    display: flex; flex-direction: column; gap: 6px;
+    padding-left: 10px; border-left: 2px solid var(--border);
+  }
+  .repo-row-line { display: flex; gap: 6px; align-items: center; }
+  .repo-row-line select { flex: 0 0 42%; min-width: 0; }
+  .repo-row-line input { flex: 1; min-width: 0; }
+  #repoTableError { font-size: 11.5px; color: var(--danger); margin-bottom: 8px; }
+
+  .status-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 10px; }
+  .status-chip {
+    display: flex; align-items: center; gap: 5px; cursor: pointer;
+    padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface-2); font-size: 11.5px; color: var(--text-dim);
+    user-select: none;
+  }
+  .status-chip input { margin: 0; accent-color: var(--accent-strong); cursor: pointer; }
+  .status-chip.checked { border-color: var(--accent-strong); color: var(--text); background: rgba(56,139,253,0.12); }
+  .status-chip-empty { font-size: 11px; color: var(--text-faint); padding-left: 10px; }
+
+  .ok { color: var(--success); } .err { color: var(--danger); }
+
+  .config-banner {
+    background: rgba(210, 153, 34, 0.12); border: 1px solid rgba(210, 153, 34, 0.4);
+    color: #e3b341; border-radius: 6px; padding: 8px 12px;
+    margin-bottom: 10px; font-size: 11.5px; line-height: 1.5;
+  }
+  .label-with-status {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    background: #9198a1; border: 1px solid #c9d1d9;
+  }
+  .status-dot.connected { background: var(--success); border-color: var(--success); box-shadow: 0 0 6px var(--success); }
+  .status-dot.connecting { background: #d29922; border-color: #d29922; animation: statusPulse 1.2s infinite; }
+  .status-dot.error, .status-dot.unauthorized { background: var(--danger); border-color: var(--danger); box-shadow: 0 0 6px var(--danger); }
+  @keyframes statusPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .status-text-inline {
+    flex: 1; color: var(--text-dim); text-transform: none;
+    font-weight: 400; letter-spacing: normal; font-size: 11px;
+  }
+  .ghost-link { background: transparent; border-color: transparent; color: var(--accent); padding: 2px 6px; text-transform: none; font-weight: 400; letter-spacing: normal; font-size: 11px; }
+  .ghost-link:hover { background: var(--surface-2); border-color: var(--border); }
+
+  .checkbox-label {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    text-transform: none; font-weight: 400; letter-spacing: normal;
+    color: var(--text); font-size: 12.5px;
+  }
+  .checkbox-label input[type="checkbox"] {
+    width: 15px; height: 15px; accent-color: var(--accent-strong);
+    cursor: pointer; flex-shrink: 0;
+  }
+
+  .actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+  }
+
+  #testOutput {
+    margin-top: 8px; background: #010409; border: 1px solid var(--border);
+    padding: 9px 10px; border-radius: 6px; max-height: 110px; overflow-y: auto;
+    white-space: pre-wrap; font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px; color: var(--text-dim); display: none;
+  }
+  .status { font-size: 11.5px; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <div id="app">
+    <h1>Nexus Supervisor</h1>
+    <div class="subtitle">1 เครื่อง คอยดูงานที่พร้อมทำทั้งโปรเจกต์ที่เลือกไว้ — ต้อง login ด้วยบัญชีระดับ PM/ADMIN</div>
+
+    <div id="configBanner" class="config-banner" style="display:none"></div>
+
+    <div class="section">
+      <div class="field">
+        <label>บัญชี Nexus (ต้องเป็น PM หรือ ADMIN)</label>
+        <div class="row" style="align-items:center;">
+          <span id="loginStatusText" class="status-text-inline">กำลังเช็ค…</span>
+          <button id="loginBtn" class="small">เข้าสู่ระบบ</button>
+          <button id="logoutBtn" class="small danger-ghost" style="display:none">ออกจากระบบ</button>
+        </div>
+        <div class="hint">การ claim task ที่ยังไม่มีคนถือ ต้องใช้สิทธิ์ task:assign แบบไม่มีเงื่อนไข — role DEV/QA ทำไม่ได้ (ระบบจะปฏิเสธ 403) ต้องเป็น PM/ADMIN เท่านั้น แยกจาก nexus-mcp-login และ agent-app คนละ login กัน</div>
+      </div>
+      <div class="field">
+        <label class="label-with-status">
+          <span>pm-system</span>
+          <span id="statusDot" class="status-dot"></span>
+          <span id="statusText" class="status-text-inline">กำลังเช็คสถานะ…</span>
+          <button id="openLogBtn" class="small ghost-link">ดู log</button>
+        </label>
+        <input type="text" id="pmSystemUrl" placeholder="http://host:port" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="field">
+        <label>AI ที่จะใช้</label>
+        <select id="preset"></select>
+      </div>
+      <div class="field">
+        <label>Command</label>
+        <input type="text" id="command" />
+        <div class="hint">{{prompt}} จะถูกแทนที่ด้วยรายละเอียด task ที่ claim มาอัตโนมัติ</div>
+      </div>
+      <div class="field">
+        <label class="checkbox-label">
+          <input type="checkbox" id="autoRetryEnabled" />
+          <span>ลองใหม่อัตโนมัติเมื่อล้มเหลว (สูงสุด 2 ครั้ง ห่างกันครั้งละ 90 วินาที)</span>
+        </label>
+        <div class="hint">ไม่ลองใหม่ถ้าเป็นการยกเลิกเอง หรือถูกบล็อกสิทธิ์ (--allowedTools)</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <label>โปรเจกต์ที่จะดูแล + สถานะที่นับว่า "พร้อมทำ"</label>
+      <div class="hint" style="margin-bottom:8px;">โปรเจกต์ไหนมี mapping อย่างน้อย 1 อัน จะถูกดูแลอัตโนมัติ — เลือก repo/โฟลเดอร์เหมือน agent-app ปกติ แล้วติ๊กว่าสถานะไหนของโปรเจกต์นั้นนับว่า "พร้อมให้ claim" (ชื่อสถานะไม่เหมือนกันทุกโปรเจก ต้องเลือกเอง)</div>
+      <div id="repoTableError" style="display:none"></div>
+      <div id="repoTable"></div>
+      <button id="addProjectBtn" class="small">+ เพิ่มโปรเจกใหม่</button>
+    </div>
+
+    <div class="section">
+      <div class="row-2col">
+        <div class="field">
+          <label>Poll ทุกกี่วินาที</label>
+          <input type="number" id="pollIntervalSec" min="10" step="5" />
+        </div>
+        <div class="field">
+          <label>รันพร้อมกันได้สูงสุด</label>
+          <input type="number" id="maxConcurrentJobs" min="1" step="1" />
+        </div>
+      </div>
+      <div class="field">
+        <label>เก็บประวัติ Activity ไว้กี่วัน</label>
+        <select id="historyRetentionDays">
+          <option value="1">1 วัน</option>
+          <option value="3">3 วัน</option>
+          <option value="7">7 วัน</option>
+        </select>
+      </div>
+      <div class="hint" id="usageSummary">กำลังโหลดข้อมูลการใช้งาน…</div>
+    </div>
+
+    <div class="actions">
+      <button id="testBtn">Test</button>
+      <button id="saveBtn" class="primary">Save</button>
+    </div>
+    <div id="testStatus" class="status"></div>
+    <pre id="testOutput"></pre>
+  </div>
+
+  <script src="../lib/ansi-to-html.js"></script>
+  <script src="settings-renderer.js"></script>
+</body>
+</html>

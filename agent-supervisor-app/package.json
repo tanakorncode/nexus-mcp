@@ -1,0 +1,38 @@
+{
+  "name": "nexus-agent-supervisor-app",
+  "version": "0.1.0",
+  "description": "One machine, one PM/ADMIN Nexus login, watching a whole project's worth of ready-to-work tasks — claims one, runs a local AI CLI against it, repeats. The opposite model from agent-app (per-person, push-based, own tasks only).",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "@napi-rs/keyring": "^1.1.4",
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.pea-thailand.nexus-agent-supervisor",
+    "productName": "Nexus Supervisor",
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**/*",
+      "windows/**/*",
+      "assets/**/*"
+    ],
+    "icon": "assets/icon-1024.png",
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

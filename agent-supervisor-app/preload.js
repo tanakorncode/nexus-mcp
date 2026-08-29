@@ -1,0 +1,30 @@
+const { contextBridge, ipcRenderer } = require("electron");
+
+// Same global name (`nexusAgent`) as agent-app on purpose — windows/progress.html
+// and progress-renderer.js were copied over verbatim and reference
+// window.nexusAgent directly; keeping the name identical meant zero changes
+// needed to that pair of files.
+contextBridge.exposeInMainWorld("nexusAgent", {
+  getSettings: () => ipcRenderer.invoke("settings:get"),
+  getPresets: () => ipcRenderer.invoke("settings:presets"),
+  saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
+  chooseFolder: () => ipcRenderer.invoke("settings:chooseFolder"),
+  testCommand: (args) => ipcRenderer.invoke("settings:test", args),
+  getAuthStatus: () => ipcRenderer.invoke("auth:status"),
+  login: () => ipcRenderer.invoke("auth:login"),
+  logout: () => ipcRenderer.invoke("auth:logout"),
+  listProjects: () => ipcRenderer.invoke("catalog:listProjects"),
+  listRepositories: (projectId) => ipcRenderer.invoke("catalog:listRepositories", projectId),
+  listStatuses: (projectId) => ipcRenderer.invoke("catalog:listStatuses", projectId),
+  getRecentJobs: () => ipcRenderer.invoke("jobs:recent"),
+  cancelJob: (id) => ipcRenderer.invoke("jobs:cancel", id),
+  retryJob: (id) => ipcRenderer.invoke("jobs:retry", id),
+  getStatus: () => ipcRenderer.invoke("status:get"),
+  getUsageSummary: () => ipcRenderer.invoke("usage:summary"),
+  onStatusUpdate: (cb) => ipcRenderer.on("status:update", (_e, data) => cb(data)),
+  openLog: () => ipcRenderer.invoke("log:open"),
+  onJobNew: (cb) => ipcRenderer.on("job:new", (_e, job) => cb(job)),
+  onJobStarted: (cb) => ipcRenderer.on("job:started", (_e, data) => cb(data)),
+  onJobLine: (cb) => ipcRenderer.on("job:line", (_e, data) => cb(data)),
+  onJobDone: (cb) => ipcRenderer.on("job:done", (_e, data) => cb(data)),
+});

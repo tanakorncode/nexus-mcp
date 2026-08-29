@@ -1,0 +1,131 @@
+const { spawn } = require("child_process");
+const { buildCommand } = require("./command");
+
+// claude --output-format json prints exactly one JSON object (type:
+// "result") to stdout when it finishes — no trailing text, no partial
+// lines. Anything else (plain-text presets, a run that never reached
+// --output-format json, output that got corrupted) just isn't that
+// shape, and this returns null so the caller falls back to treating
+// stdout as plain log lines the way it always did.
+function parseResultJson(stdout) {
+  const trimmed = stdout.trim();
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && parsed.type === "result" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+// Runs the configured command for one event, streaming raw stdout lines to
+// onLine as they arrive (so a progress window can show live output) and
+// reporting completion via onDone. Deliberately shell: false — see
+// command.js for why.
+function runJob({ command, workDir, prompt, onLine, onDone }) {
+  let cmd, args;
+  try {
+    ({ cmd, args } = buildCommand(command, prompt));
+  } catch (err) {
+    onLine(`[error] ${err.message}`);
+    onDone({ ok: false, error: err.message });
+    return { kill: () => {} };
+  }
+
+  // Piping stdout/stderr (to capture them here) means the child sees a
+  // non-TTY and most well-behaved CLIs — claude included, being Node-based
+  // — silently drop their own color output as a result. FORCE_COLOR is the
+  // de-facto Node ecosystem convention (chalk, ansi-colors, picocolors all
+  // respect it) to override that auto-detection.
+  const child = spawn(cmd, args, {
+    cwd: workDir || undefined,
+    shell: false,
+    env: { ...process.env, FORCE_COLOR: "1" },
+    // stdin explicitly closed: this is always a one-shot, fire-and-forget
+    // run with nothing to pipe in. Left as Node's default ("pipe"), the
+    // child sees an open-but-silent stdin and — claude specifically —
+    // burns 3s waiting for input that will never come, then logs a
+    // stderr warning about it. Closing it outright means claude sees EOF
+    // immediately instead of a live inherited/piped stdin from Agent App
+    // itself (Electron apps have no real stdin worth inheriting here).
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let buffer = "";
+  let stdoutFull = ""; // kept whole, separate from the line-buffer above —
+  // needed to parse `--output-format json`'s single result blob on close.
+  // Exit code alone can't be trusted for that: claude exits 0 even when a
+  // tool call was denied mid-run and the model just talked around it,
+  // which is exactly the "Activity says done, but nothing happened"
+  // report this exists to catch.
+
+  const flush = (chunk, isErr) => {
+    const text = chunk.toString();
+    if (!isErr) stdoutFull += text;
+    buffer += text;
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) onLine(isErr ? `[stderr] ${line}` : line);
+  };
+
+  child.stdout.on("data", (d) => flush(d, false));
+  child.stderr.on("data", (d) => flush(d, true));
+
+  let cancelled = false;
+
+  child.on("error", (err) => {
+    onLine(`[error] failed to start: ${err.message}`);
+    onDone({ ok: false, error: err.message });
+  });
+
+  child.on("close", (code) => {
+    if (buffer) onLine(buffer);
+    if (cancelled) {
+      onLine("[cancelled by user]");
+      onDone({ ok: false, cancelled: true });
+      return;
+    }
+
+    // Only claude's --output-format json produces this shape; other
+    // presets (Codex, Gemini CLI, a custom command with plain text
+    // output) just fail to parse here and fall through to the old
+    // exit-code-only behavior below, unchanged.
+    const structured = parseResultJson(stdoutFull);
+    if (structured) {
+      const { is_error, permission_denials, result, subtype, total_cost_usd, duration_ms, usage } = structured;
+      const denied = permission_denials?.length ? permission_denials : [];
+      const ok = code === 0 && !is_error && denied.length === 0;
+      if (denied.length) {
+        const names = denied.map((d) => d.tool_name).join(", ");
+        onLine(`[blocked] permission denied for: ${names} — nobody was present to approve; add the tool to --allowedTools if this should be unattended`);
+      }
+      if (result) onLine(result);
+      // costUsd/durationMs/tokens only ever come from claude's own
+      // --output-format json (this whole `structured` branch is claude-only
+      // to begin with — see parseResultJson's comment) — left undefined for
+      // any other preset, which summarizeUsage() in history.js treats as
+      // "unknown cost", distinct from a real $0 run.
+      onDone({
+        ok,
+        exitCode: code,
+        subtype,
+        blockedTools: denied.map((d) => d.tool_name),
+        costUsd: typeof total_cost_usd === "number" ? total_cost_usd : undefined,
+        durationMs: typeof duration_ms === "number" ? duration_ms : undefined,
+        inputTokens: usage?.input_tokens,
+        outputTokens: usage?.output_tokens,
+      });
+      return;
+    }
+
+    onDone({ ok: code === 0, exitCode: code });
+  });
+
+  return {
+    kill: () => {
+      cancelled = true;
+      child.kill();
+    },
+  };
+}
+
+module.exports = { runJob };
