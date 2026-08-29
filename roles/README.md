@@ -28,9 +28,14 @@ cp -r ~/development/pea/claude-templates/roles/pm/.agents/.  .agents/
 mkdir -p .claude
 ln -s ../.agents/agents .claude/agents
 ln -s ../.agents/skills .claude/skills
+ln -s ../.agents/hooks .claude/hooks
 ```
 
-(If `.claude/agents`/`.claude/skills` already exist as real folders from before, move their contents into `.agents/` first, then replace them with the symlinks above — don't end up with both a real folder and a symlink fighting over the same name.)
+(If `.claude/agents`/`.claude/skills`/`.claude/hooks` already exist as real folders from before, move their contents into `.agents/` first, then replace them with the symlinks above — don't end up with both a real folder and a symlink fighting over the same name.)
+
+**Don't skip the `.claude/hooks` symlink** even if you're not setting up unattended runs yet — every role's `settings.local.json.example` (see "รันแบบ unattended" in each role's own `.md`) hardcodes its hook command as `python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/preapprove.py"`. Without this symlink, that path never resolves — the hook silently fails to run, and every unattended `Write`/`Edit`/`Bash` call just hangs or gets denied with no indication why the preapprove step itself never fired. Confirmed this the hard way: a role installed with only the `agents`/`skills` symlinks (this doc's own instructions, before this note existed) hit exactly that — `git checkout` and every file write denied, because `.claude/hooks/preapprove.py` didn't exist despite `.agents/hooks/preapprove.py` being right there.
+
+**Multiple roles sharing one repo**: `.agents/hooks/preapprove.py` and `.agents/hooks/settings.local.json.example` are filenames shared across every role's hooks folder (dev's and qa's are genuinely different scripts — qa's has no Write/Edit gating at all, since qa.md deliberately has no Write/Edit tool). Copying more than one role's `.agents/` into the same target with the merge command above means **whichever role you `cp -r` last silently overwrites the previous role's hook** — there is no warning, no conflict error. If you're installing multiple roles into one repo, check `.agents/hooks/preapprove.py` afterward to confirm it's actually the version you meant to end up with (e.g. `grep -l "the dev role" .agents/hooks/preapprove.py` should find it if dev's copy won).
 
 Also install the two nexus-mcp workflow skills every role's `agents/*.md` assumes are there (see `../skills/`) — `nexus-plan-work` for pm/ba, `nexus-pick-up-task` for dev/qa — the same `.agents/skills/` target:
 
