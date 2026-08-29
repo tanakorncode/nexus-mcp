@@ -16,12 +16,17 @@ const PRESETS = {
   // pre-approved for every event (including ones carrying attacker-
   // adjacent task/comment content) is a materially bigger blast radius
   // than pre-approving one known MCP server's own tools.
-  // --output-format json (verified this ordering too) is what lets
-  // runner.js tell a run that *reported* success from one that actually
-  // did the work — claude often exits 0 and just talks around a denied
-  // tool call rather than erroring, so exit code alone can't catch that.
-  // See runner.js's parseResultJson/permission_denials handling.
-  "Claude Code": 'claude --allowedTools "mcp__nexus-mcp__*" --output-format json -p "{{prompt}}"',
+  // --output-format stream-json --verbose (verified this ordering, and
+  // that --verbose is required alongside stream-json when using -p, with
+  // a real `claude` invocation) is what lets runner.js show live progress
+  // AND tell a run that *reported* success from one that actually did the
+  // work — claude often exits 0 and just talks around a denied tool call
+  // rather than erroring, so exit code alone can't catch that. Plain
+  // --output-format json also carries that same signal, but prints
+  // nothing at all until the whole run finishes; stream-json prints one
+  // JSON event per line as it goes, ending in the same summary shape.
+  // See runner.js's formatStreamEvent/permission_denials handling.
+  "Claude Code": 'claude --allowedTools "mcp__nexus-mcp__*" --output-format stream-json --verbose -p "{{prompt}}"',
   Codex: 'codex exec "{{prompt}}"',
   "Gemini CLI": 'gemini -p "{{prompt}}"',
   Custom: "",
