@@ -30,3 +30,11 @@ model: sonnet
 ## ข้อควรระวัง
 
 - ถ้า tool ไหน error ว่า auto-detect project ไม่ได้ (ข้อความจะบอกตรงๆ ว่า "Pass projectId explicitly, or run list_projects to find it") ให้เรียก `list_projects` เทียบชื่อ หรือถาม project id จากคนสั่งงาน
+
+## รันแบบ unattended (Agent App หรือ wrapper อื่นที่สั่ง `claude -p` ไม่มีคนอยู่)
+
+`claude -p` แบบ plain (ไม่ผ่าน Agent SDK) ไม่มี `PermissionRequest` hook ยิงเลย (ตามที่ Claude Code hooks guide เขียนไว้ตรงๆ ในหัวข้อ Limitations) — ทุก `Bash` ที่ยังไม่ pre-approve จะค้าง/โดน deny เงียบๆ ทันทีที่ไม่มีคนกดอนุมัติ
+
+ใช้ `.agents/hooks/preapprove.py` (มากับ role นี้) เป็น **`PreToolUse` hook** แทนการเปิด `Bash` ผ่าน `--allowedTools` แบบเหมาเข่ง — เนื้อหา task/comment ที่มา trigger การรันแบบนี้เป็น attacker-adjacent (ใครก็ได้ที่มีสิทธิ์เข้าถึง project เขียนได้) hook นี้จำกัดแค่คำสั่งเทสตาม `ALLOWED_BASH` (แก้ให้ตรงกับ test tooling จริงของ repo นี้ — เช่น `bundle exec rspec` สำหรับ Rails) ไม่ต้องมี logic สำหรับ `Write`/`Edit` เพราะ qa ไม่มี tool พวกนี้อยู่แล้ว
+
+**วิธีเปิดใช้**: copy `.agents/hooks/settings.local.json.example` ไปเป็น `.claude/settings.local.json` (หรือ merge เข้ากับที่มีอยู่แล้ว) — ไฟล์ตัวอย่างไม่ได้ทำงานเองอัตโนมัติ ต้อง copy ก่อนถึงจะมีผลจริง ทดสอบ hook เดี่ยวๆ ได้ด้วย `echo '{"tool_name":"Bash","tool_input":{"command":"..."}}' | python3 .agents/hooks/preapprove.py` ก่อนพึ่งพาจริง

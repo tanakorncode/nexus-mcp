@@ -32,3 +32,11 @@ model: sonnet
 
 - ห้ามรันคำสั่งทำลายระบบ (`rm -rf`, `DROP TABLE`, `git push --force`, `git reset --hard` ฯลฯ) โดยไม่ได้รับอนุญาตชัดเจนจากคนสั่งงาน
 - ถ้า tool ไหน error ว่า auto-detect project ไม่ได้ (ข้อความจะบอกตรงๆ ว่า "Pass projectId explicitly, or run list_projects to find it") ให้เรียก `list_projects` เทียบชื่อ หรือถาม project id จากคนสั่งงาน — auto-detect ใช้ไม่ได้เสมอไป โดยเฉพาะ repo ที่ยังไม่ได้ลงทะเบียนเป็น GitRepository ใน Nexus
+
+## รันแบบ unattended (Agent App หรือ wrapper อื่นที่สั่ง `claude -p` ไม่มีคนอยู่)
+
+`claude -p` แบบ plain (ไม่ผ่าน Agent SDK) ไม่มี `PermissionRequest` hook ยิงเลย (ตามที่ Claude Code hooks guide เขียนไว้ตรงๆ ในหัวข้อ Limitations) — ทุก `Write`/`Edit`/`Bash` ที่ยังไม่ pre-approve จะค้าง/โดน deny เงียบๆ ทันทีที่ไม่มีคนกดอนุมัติ
+
+ใช้ `.agents/hooks/preapprove.py` (มากับ role นี้) เป็น **`PreToolUse` hook** แทนการเปิด `Bash`/`Write`/`Edit` ผ่าน `--allowedTools` แบบเหมาเข่ง — เนื้อหา task/comment ที่มา trigger การรันแบบนี้เป็น attacker-adjacent (ใครก็ได้ที่มีสิทธิ์เข้าถึง project เขียนได้) เปิดรันคำสั่ง/แก้ไฟล์แบบไม่ขออนุญาตเลยทุก event เสี่ยงเกินไป — hook นี้จำกัดแค่ pattern ที่ระบุไว้ใน `ALLOWED_BASH` (แก้ไขให้ตรงกับ toolchain จริงของ repo นี้ — เช่น `bundle`/`rails` สำหรับ Rails, `go` สำหรับ Go) และจำกัด `Write`/`Edit` ให้อยู่แค่ในโฟลเดอร์ของ repo เอง ห้ามแตะ `.env`/`.git/`
+
+**วิธีเปิดใช้**: copy `.agents/hooks/settings.local.json.example` ไปเป็น `.claude/settings.local.json` (หรือ merge เข้ากับที่มีอยู่แล้ว) — ไฟล์ตัวอย่างไม่ได้ทำงานเองอัตโนมัติ ต้อง copy ก่อนถึงจะมีผลจริง ทดสอบ hook เดี่ยวๆ ได้ด้วย `echo '{"tool_name":"Bash","tool_input":{"command":"..."},"cwd":"..."}' | python3 .agents/hooks/preapprove.py` ก่อนพึ่งพาจริง
