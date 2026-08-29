@@ -48,4 +48,28 @@ function loadHistory(userDataDir, retentionDays) {
   return kept;
 }
 
-module.exports = { appendJob, loadHistory };
+// Recomputed fresh from history.jsonl on every call rather than kept as a
+// running in-memory tally — the file is already the source of truth
+// (loadHistory prunes it to the retention window on every read/write), so a
+// separate running total would just be one more thing that could drift
+// from what's actually on disk after a retention change or app restart.
+// costUsd is only known for jobs that ran via claude's own
+// --output-format json (see runner.js) — a job from another preset (or one
+// persisted before this field existed) has done.costUsd === undefined,
+// counted in `unknownCost` rather than silently treated as $0.
+function summarizeUsage(userDataDir, retentionDays) {
+  const entries = loadHistory(userDataDir, retentionDays);
+  let costUsd = 0;
+  let unknownCost = 0;
+  let ok = 0;
+  let failed = 0;
+  for (const entry of entries) {
+    if (entry.done?.ok) ok++;
+    else failed++;
+    if (typeof entry.done?.costUsd === "number") costUsd += entry.done.costUsd;
+    else unknownCost++;
+  }
+  return { jobs: entries.length, ok, failed, costUsd, unknownCost };
+}
+
+module.exports = { appendJob, loadHistory, summarizeUsage };

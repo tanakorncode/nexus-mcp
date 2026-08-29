@@ -214,6 +214,28 @@ async function renderRepoTable() {
   }
 }
 
+// costUsd/unknownCost only come from claude's own --output-format json
+// (see runner.js/history.js) — a job run via another preset (Codex, Gemini
+// CLI, Custom) has no cost figure at all, so this is worded as "known
+// cost" rather than implying the unknown ones were free.
+async function refreshUsageSummary() {
+  const el = $("usageSummary");
+  const summary = await window.nexusAgent.getUsageSummary();
+  if (summary.jobs === 0) {
+    el.textContent = "ยังไม่มีงานที่เสร็จในช่วงที่เก็บประวัติไว้";
+    return;
+  }
+  const parts = [`${summary.jobs} งาน (${summary.ok} สำเร็จ, ${summary.failed} ล้มเหลว)`];
+  if (summary.jobs > summary.unknownCost) {
+    parts.push(`ใช้ไปประมาณ $${summary.costUsd.toFixed(4)}`);
+  }
+  if (summary.unknownCost > 0) {
+    const label = summary.jobs === summary.unknownCost ? "ไม่ทราบ cost" : `${summary.unknownCost} งานไม่ทราบ cost`;
+    parts.push(`${label} (เฉพาะ Claude Code preset ที่มีข้อมูลนี้)`);
+  }
+  el.textContent = parts.join(" — ");
+}
+
 $("addProjectBtn").addEventListener("click", () => {
   repoMap.push({ projectId: null, projectName: null, repositoryId: null, repoName: null, path: "" });
   renderRepoTable();
@@ -279,6 +301,7 @@ async function init() {
   $("historyRetentionDays").value = String(settings.historyRetentionDays ?? 7);
   repoMap = (settings.repoMap ?? []).map((r) => ({ ...r }));
   renderRepoTable();
+  refreshUsageSummary();
 
   presetSelect.addEventListener("change", () => {
     const value = presets[presetSelect.value];
@@ -336,6 +359,7 @@ $("saveBtn").addEventListener("click", async () => {
     saveStatus.className = "status ok";
   }
   console.log("saved settings:", saved);
+  refreshUsageSummary(); // retention days may have just changed the window
 });
 
 init();

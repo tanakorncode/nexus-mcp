@@ -12,7 +12,7 @@ const jobs = new Map(); // id -> { id, prompt, lines: [], done }
 let activeId = null;
 
 function dotClass(job) {
-  if (job.done === null) return "running";
+  if (job.done === null) return job.queued ? "queued" : "running";
   return job.done.ok ? "ok" : "fail";
 }
 
@@ -73,11 +73,19 @@ function renderLog() {
   const job = jobs.get(activeId);
   logEl.innerHTML = "";
   headerTextEl.textContent = job
-    ? `[${jobTime(job, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}]  ${job.prompt.replace(/\n/g, "  ·  ")}`
+    ? `[${jobTime(job, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}]  ${job.prompt.replace(/\n/g, "  ·  ")}${job.queued ? "  ·  อยู่ในคิว" : ""}`
     : "";
   cancelBtn.style.display = job && job.done === null ? "block" : "none";
   retryBtn.style.display = canRetry(job) ? "block" : "none";
   if (!job) return;
+  if (job.queued) {
+    logEl.innerHTML = "";
+    const note = document.createElement("div");
+    note.id = "empty";
+    note.textContent = "รอโฟลเดอร์นี้ว่าง — มีงานอื่นทำอยู่ในที่เดียวกัน จะเริ่มทันทีที่งานนั้นเสร็จ";
+    logEl.appendChild(note);
+    return;
+  }
   for (const line of job.lines) appendLogLine(line);
 }
 
@@ -131,6 +139,19 @@ window.nexusAgent.getRecentJobs().then((recent) => {
 });
 
 window.nexusAgent.onJobNew((job) => upsert(job, { follow: true }));
+
+// Fires when a queued job's turn comes up and it actually starts running —
+// the job object itself doesn't change shape, just queued flips to false,
+// so re-render rather than re-upsert (upsert would also re-follow it,
+// which isn't wanted here — only a brand new job arriving should steal
+// focus from whatever the user is currently looking at).
+window.nexusAgent.onJobStarted(({ id }) => {
+  const job = jobs.get(id);
+  if (!job) return;
+  job.queued = false;
+  renderJobList();
+  if (id === activeId) renderLog();
+});
 
 window.nexusAgent.onJobLine(({ id, line }) => {
   const job = jobs.get(id);

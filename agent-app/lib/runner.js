@@ -91,7 +91,7 @@ function runJob({ command, workDir, prompt, onLine, onDone }) {
     // exit-code-only behavior below, unchanged.
     const structured = parseResultJson(stdoutFull);
     if (structured) {
-      const { is_error, permission_denials, result, subtype } = structured;
+      const { is_error, permission_denials, result, subtype, total_cost_usd, duration_ms, usage } = structured;
       const denied = permission_denials?.length ? permission_denials : [];
       const ok = code === 0 && !is_error && denied.length === 0;
       if (denied.length) {
@@ -99,7 +99,21 @@ function runJob({ command, workDir, prompt, onLine, onDone }) {
         onLine(`[blocked] permission denied for: ${names} — nobody was present to approve; add the tool to --allowedTools if this should be unattended`);
       }
       if (result) onLine(result);
-      onDone({ ok, exitCode: code, subtype, blockedTools: denied.map((d) => d.tool_name) });
+      // costUsd/durationMs/tokens only ever come from claude's own
+      // --output-format json (this whole `structured` branch is claude-only
+      // to begin with — see parseResultJson's comment) — left undefined for
+      // any other preset, which summarizeUsage() in history.js treats as
+      // "unknown cost", distinct from a real $0 run.
+      onDone({
+        ok,
+        exitCode: code,
+        subtype,
+        blockedTools: denied.map((d) => d.tool_name),
+        costUsd: typeof total_cost_usd === "number" ? total_cost_usd : undefined,
+        durationMs: typeof duration_ms === "number" ? duration_ms : undefined,
+        inputTokens: usage?.input_tokens,
+        outputTokens: usage?.output_tokens,
+      });
       return;
     }
 
