@@ -11,6 +11,15 @@ function canRetry(job) {
 const jobs = new Map(); // id -> { id, prompt, lines: [], done }
 let activeId = null;
 
+// Every real Nexus-triggered prompt is prefixed with summarize.js's
+// UNATTENDED_HEADER — one long line with no embedded newline — so a plain
+// prompt.split("\n")[0] grabs that boilerplate instead of the actual task.
+// Mirrors main.js's own taskLineOf() (a separate process, no way to share
+// the function directly).
+function taskLineOf(prompt) {
+  return prompt.split("\n").find((l) => l.startsWith("[Nexus]")) ?? prompt.split("\n")[0];
+}
+
 function dotClass(job) {
   if (job.done === null) return job.queued ? "queued" : "running";
   return job.done.ok ? "ok" : "fail";
@@ -43,7 +52,8 @@ function renderJobList() {
     body.className = "job-body";
     const title = document.createElement("div");
     title.className = "title";
-    title.textContent = job.prompt.split("\n")[0].slice(0, 40);
+    const retryTag = job.retryCount > 0 ? `↻${job.retryCount} ` : "";
+    title.textContent = retryTag + taskLineOf(job.prompt).slice(0, 40);
     const time = document.createElement("div");
     time.className = "time";
     time.textContent = jobTime(job, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -73,7 +83,7 @@ function renderLog() {
   const job = jobs.get(activeId);
   logEl.innerHTML = "";
   headerTextEl.textContent = job
-    ? `[${jobTime(job, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}]  ${job.prompt.replace(/\n/g, "  ·  ")}${job.queued ? "  ·  อยู่ในคิว" : ""}`
+    ? `[${jobTime(job, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}]  ${job.retryCount > 0 ? `↻${job.retryCount} ` : ""}${taskLineOf(job.prompt)}${job.queued ? "  ·  อยู่ในคิว" : ""}`
     : "";
   cancelBtn.style.display = job && job.done === null ? "block" : "none";
   retryBtn.style.display = canRetry(job) ? "block" : "none";

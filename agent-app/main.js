@@ -47,6 +47,15 @@ const jobKillHandles = new Map();
 const workDirLocks = new Map(); // workDir -> job id currently running there
 const workDirQueues = new Map(); // workDir -> array of job objects waiting their turn
 
+// "No polling, no manual check-in" (see package.json's description) doesn't
+// hold for a job that failed transiently — without this, that job just
+// sits failed until a person happens to open Activity and clicks "รันใหม่".
+// A conservative couple of retries with a real gap between them (mirroring
+// the failed-run retry pattern in agent-teams-ai's scheduler) gives a
+// network blip or a momentary rate limit a chance to clear on its own.
+const MAX_AUTO_RETRIES = 2;
+const RETRY_DELAY_MS = 90_000;
+
 function getSettings() {
   return store.load(app.getPath("userData"));
 }
@@ -158,15 +167,19 @@ function taskLineOf(prompt) {
   return prompt.split("\n").find((l) => l.startsWith("[Nexus]")) ?? prompt.split("\n")[0];
 }
 
-// Shared by both a real Nexus event (handleEvent) and a manual re-run of a
-// past job (jobs:retry IPC) — same job lifecycle either way. Creates the job
+// Shared by a real Nexus event (handleEvent), a manual re-run of a past job
+// (jobs:retry IPC — always retryCount 0, a person retrying by hand isn't
+// spending the auto-retry budget), and a scheduled auto-retry after a
+// transient failure (retryCount > 0, see runNow's onDone). Creates the job
 // immediately either way (so it always shows up in Activity right away) —
 // whether it starts running now or waits behind another job in the same
 // workDir is decided below.
-function startJob(prompt, workDir) {
-  const job = { id: `${Date.now()}`, prompt, workDir, lines: [], done: null, queued: false };
+function startJob(prompt, workDir, retryCount = 0) {
+  const job = { id: `${Date.now()}`, prompt, workDir, lines: [], done: null, queued: false, retryCount };
   recentJobs.unshift(job);
   if (recentJobs.length > 20) recentJobs.pop();
+
+  const retrySuffix = retryCount > 0 ? `\n(ครั้งที่ ${retryCount}/${MAX_AUTO_RETRIES})` : "";
 
   if (workDir && workDirLocks.has(workDir)) {
     job.queued = true;
@@ -175,13 +188,13 @@ function startJob(prompt, workDir) {
     workDirQueues.set(workDir, queue);
     progressWindow?.webContents.send("job:new", job);
     updateTrayTitle();
-    notify("Nexus Agent — เข้าคิว", `${taskLineOf(prompt)}\nกำลังรอ — มีงานอื่นทำอยู่ในโฟลเดอร์นี้แล้ว`);
+    notify("Nexus Agent — เข้าคิว", `${taskLineOf(prompt)}\nกำลังรอ — มีงานอื่นทำอยู่ในโฟลเดอร์นี้แล้ว${retrySuffix}`);
     return job;
   }
 
   progressWindow?.webContents.send("job:new", job);
   updateTrayTitle();
-  notify("Nexus Agent — เริ่มทำงานใหม่", taskLineOf(prompt));
+  notify(retryCount > 0 ? "Nexus Agent — ลองใหม่อัตโนมัติ" : "Nexus Agent — เริ่มทำงานใหม่", `${taskLineOf(prompt)}${retrySuffix}`);
   runNow(job);
   return job;
 }
@@ -225,6 +238,22 @@ function runNow(job) {
         notify("Nexus Agent — ถูกบล็อกสิทธิ์", `${taskLine}\nไม่ได้รับอนุญาตให้ใช้: ${result.blockedTools.join(", ")}`);
       } else {
         notify(result.ok ? "Nexus Agent — เสร็จแล้ว" : "Nexus Agent — ล้มเหลว", taskLine);
+      }
+      // Cancelled means the user chose to stop it — not transient, retrying
+      // would just run it again against their wishes. A permission block
+      // means --allowedTools is missing the tool; retrying hits the exact
+      // same wall every time until a person edits the command, so it isn't
+      // "transient" either. Everything else genuinely might be (a network
+      // blip, a momentary rate limit, claude itself hiccuping).
+      const retryEligible = !result.ok && !result.cancelled && !result.blockedTools?.length;
+      if (retryEligible && workDir && (job.retryCount ?? 0) < MAX_AUTO_RETRIES) {
+        const nextAttempt = (job.retryCount ?? 0) + 1;
+        setTimeout(() => {
+          // Re-checked at fire time, not schedule time — Enabled may have
+          // been switched off in the 90s since this failed.
+          if (!getSettings().enabled) return;
+          startJob(job.prompt, workDir, nextAttempt);
+        }, RETRY_DELAY_MS);
       }
       if (workDir) dequeueNext(workDir);
     },
