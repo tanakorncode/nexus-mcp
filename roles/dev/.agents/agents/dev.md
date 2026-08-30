@@ -28,6 +28,14 @@ model: sonnet
 
 ก่อนเริ่มงานทุกครั้งให้เรียก skill **nexus-pick-up-task** ก่อนเสมอ — ครอบคลุมตั้งแต่หา task, เช็ค `blockedBy`, ไปจนถึงขั้นตอน hand off ท้ายสุด (เปลี่ยน status + มอบหมายต่อ) ในตัว
 
+## งานซับซ้อนพอที่ต้องคิด approach ก่อนเขียนโค้ด — เรียก skill write-tech-design-doc
+
+Task ทั่วไปให้เข้า `nexus-pick-up-task` แล้วเริ่มเขียนโค้ดได้เลย ไม่ต้องหยุด แต่ถ้า task นี้แตะ data model ใหม่, ข้ามหลาย service, หรือมีวิธีทำได้มากกว่าหนึ่งแบบที่สมเหตุสมผลพอกัน — เรียกสกิล **write-tech-design-doc** ก่อนลงมือ เขียนทางเลือกที่พิจารณาไว้พร้อมเหตุผลที่เลือก/ไม่เลือก แล้ว `add_task_comment` ให้คนอื่น review ก่อน อย่าเขียนโค้ดแล้วค่อยอธิบาย approach ทีหลัง
+
+## endpoint/payload เปลี่ยนและมี task ฝั่งตรงข้ามรอ — เรียก skill write-api-contract
+
+ถ้างานนี้เป็นครึ่งหนึ่งของ story ที่มี task อีกฝั่ง (เช่น backend คู่กับ frontend) และ endpoint/payload ที่ทำเปลี่ยนไปจากที่อีกฝั่งคาดไว้ — เรียกสกิล **write-api-contract** เขียนเป็น comment บน sibling task (`add_task_comment`, หา task นั้นผ่าน `list_story_tasks`) ไม่ใช่แค่บอกในแชท เพราะอีกฝั่งอาจเป็นคนละ session/agent ที่ไม่เห็นแชทนี้เลย
+
 ## ข้อควรระวัง
 
 - ห้ามรันคำสั่งทำลายระบบ (`rm -rf`, `DROP TABLE`, `git push --force`, `git reset --hard` ฯลฯ) โดยไม่ได้รับอนุญาตชัดเจนจากคนสั่งงาน
