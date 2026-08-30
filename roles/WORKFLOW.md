@@ -8,21 +8,28 @@ Status **names** are never fixed here on purpose — every role's skill says "ch
 
 ```mermaid
 flowchart LR
-    subgraph Plan["1. Plan (pm-planwork)"]
+    subgraph Plan["1. Plan"]
         PM["pm"] -->|owns priority/scope| Task(("task created"))
-        BA["ba"] -->|owns requirements| Task
+        BA["ba"] -->|"owns requirements,<br/>write-brd if business-facing"| Task
     end
     Task -->|"assigned (pm only can assign to anyone;<br/>ba must ask pm)"| DEV["dev — nexus-pick-up-task"]
     DEV -->|"implement, test, PR"| QA["qa — nexus-pick-up-task"]
-    QA -->|"pass"| Done(("done"))
     QA -->|"fail — write-bug-report"| DEV
+    QA -->|"pass, no BRD linked"| Done(("done"))
+    QA -->|"pass, BRD linked —<br/>needs UAT"| BAUAT["ba — write-uat-scenario"]
+    BAUAT -->|"stakeholder sign-off: pass"| Done
+    BAUAT -->|"stakeholder sign-off: fail<br/>(ba asks pm to reassign)"| DEV
 ```
 
-1. **pm / ba plan** — `nexus-plan-work`. Either can create the task (ADMIN/PM/BA are the only roles that can — `task:create`/`backlog:manage` are `false` for dev/qa, this is a real server-side 403, not convention). Only **pm** can assign it to anyone freely (`task:assign: true`); **ba cannot assign at all** (`task:assign: false`) — ba creates it unassigned and asks pm to assign, or leaves it for pm to pick up during planning.
+1. **pm / ba plan** — `nexus-plan-work`. Either can create the task (ADMIN/PM/BA are the only roles that can — `task:create`/`backlog:manage` are `false` for dev/qa, this is a real server-side 403, not convention). Only **pm** can assign it to anyone freely (`task:assign: true`); **ba cannot assign at all** (`task:assign: false`) — ba creates it unassigned and asks pm to assign, or leaves it for pm to pick up during planning. If the work traces back to a real business need (not a one-line bug fix), ba writes a `write-brd` first and links it to the epic via comment — that link is what step 3 checks for.
 2. **dev implements** — `nexus-pick-up-task`. Reads full context, checks `blockedBy`, matches repo conventions, implements, verifies (tests/lint/build — optionally with a `qa`-persona pre-check first, see dev's own file), opens a PR, hands off: status change + reassign to qa, together (see "why hand-off is one action" below).
 3. **qa tests** — `nexus-pick-up-task`. Checks against acceptance criteria.
-   - **Pass** → status to whatever this project calls done/ready, confirm what was checked.
    - **Fail** → `write-bug-report`, status back to whatever means "needs rework," reassign back to whoever implemented it. Never just a comment with no reassignment — an unowned task doesn't show up in anyone's list, it just goes quiet.
+   - **Pass, no BRD linked** (technical work — bug fix, refactor, infra) → close it out directly, same as before.
+   - **Pass, BRD linked** (real business-facing work) → don't close it yet — reassign to ba for UAT, status to whatever means "awaiting UAT."
+4. **ba runs UAT** (only for tasks step 3 routed here) — `write-uat-scenario`, using the linked BRD. Writes the scenario, hands it to the actual stakeholder, and **stops** — pass/fail is a real business sign-off, not something ba (or any agent) decides on the stakeholder's behalf. Once a real verdict comes back:
+   - **Pass** → ba closes it directly (status-only change, no reassignment needed — ba is already the assignee).
+   - **Fail** → ba writes up the gap between what was asked for and what shipped, but **cannot reassign it back to dev itself** (`task:assign: false`, same boundary as everywhere else in ba's file) — asks pm to do the reassignment.
 
 That's the whole main line. Everything below is a *side channel* on top of it — none of it replaces this sequence.
 
