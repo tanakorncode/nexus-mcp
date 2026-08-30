@@ -221,4 +221,23 @@ The one part that needed real care: the configured command executes user-control
 
 **What's real vs. what isn't yet**: this dev environment's own Electron binary download was blocked (left a ~50KB stub instead of the ~100MB+ real app), so the GUI shell itself — tray icon, settings/progress windows — could not be launched and visually confirmed here. Everything underneath it was: `lib/command.js` (including the injection tests above), `lib/store.js`'s settings persistence, and `lib/ws-client.js` against a real running `notify-server`. `npm start` on an unrestricted machine is the remaining check before this goes to the team. Packaging (`electron-builder`) is wired but unsigned (Gatekeeper/SmartScreen will warn on first run) and the auto-update feed URL in `package.json` is a placeholder — needs actual static file hosting set up before `electron-updater` has anything real to check against.
 
+## 2026-08-30 — tested Claude Code's native Agent Teams against this project's roles; use `in-process`, not `tmux`
+
+Separate from everything above: `nexus-consult-teammate`/`nexus-consult-role` (this repo's own cross-role mechanism, one persona spawns another and gets a single report back) is not the same thing as Claude Code's own experimental **Agent Teams** feature (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`) — teammates get a real shared task list and a `SendMessage` mailbox to talk to each other directly. Set up a test rig at `/Volumes/T7-Shield/projects/claude-lab/nexus-team-demo` (all 5 roles' `.agents/` merged into one repo, full mesh) specifically to try it against real Nexus data.
+
+**Finding, confirmed with two live runs, same prompt shape (pm+ba+dev converging on one feature's requirements):**
+
+| `teammateMode` | `SendMessage` teammate → lead | Split-pane view |
+|---|---|---|
+| `tmux` | **Broken every call**, whole session — `"SendMessage is disabled for this session"` | yes |
+| `in-process` | Works — 3/3 calls succeeded, real-time, no errors | no (switch teammates via arrow keys + Enter) |
+
+Root cause per Claude Code's own docs (not verified by reading its source, this project doesn't have access to it): tmux split-pane mode doesn't bind the inbox socket cross-session messaging needs. No known way to get both the visual panes and working `SendMessage` at once right now — pick one. Checked whether there's any channel besides `SendMessage` to fall back on inside tmux mode: there isn't (`ListAgents` + `SendMessage` are the only two tools Claude Code's own cross-session-messaging docs list; the shared task list at `~/.claude/tasks/` doesn't update on its own either — still needs a tool call).
+
+**The fallback that matters more than the bug**: even with `SendMessage` fully broken (the tmux run), the team didn't get stuck — ba/dev wrote findings straight to Nexus (`add_task_comment`, a plain nexus-mcp tool, untouched by the Agent-Teams-specific bug) and to local files, and the work finished correctly anyway, same quality as the working run. Same conclusion as the `claude-bridge` question from earlier in this project's history: no separate message-bus dependency is needed — Nexus already is the durable, bug-proof channel; `SendMessage` is a nice-to-have for live visibility on top of it, not something the actual work depends on.
+
+Other rough edges found, both modes: a teammate can spawn another role via `Agent` but only *without* a `name` (naming it hits `"Teammates cannot spawn other teammates — roster is flat"` — matches the documented "no nested teams" limit, falls back to an ordinary ephemeral subagent instead); `get_current_project` auto-detect doesn't resolve inside a teammate context, pass `projectId` explicitly; a teammate can't `Write` an arbitrary report file (blocked: *"Subagents should return findings as text... Include this content in your final response instead"* — the lead session has to write it from what's reported back).
+
+Full writeup, config, and both real reports (`docs/report-mark-all-complete.md` tmux run, `docs/report-due-date.md` in-process run — both created real Nexus tasks, `PROJEC-19`/`20` and `PROJEC-21`/`22`) live in `nexus-team-demo/AGENT-TEAMS.md`, not this repo — that project isn't part of `nexus-mcp`'s own git history.
+
 **Also shipped the same day, simpler and already fully working**: plain email notifications (`4d82598` in pm-system) for anyone who doesn't need auto-continue-work — reuses `mailer.ts`, which already existed in the codebase but was never wired to task events. Covers BA/PM/anyone regardless of tooling; production just needs `SMTP_*` env vars set, which it doesn't have yet.
