@@ -2,7 +2,7 @@
 
 **Looking for how the roles actually hand off to each other — who does what, in what order?** See [`WORKFLOW.md`](WORKFLOW.md). This file is about installing them; that one's about the pipeline they run once installed.
 
-One folder per real Nexus RBAC role (`pm`, `ba`, `dev`, `qa`) — copy-once seeds, same mechanism as `../frameworks/`, not live-shared. Each is a **complete, drop-in package**: the subagent definition plus every document-writing skill that role actually needs —
+One folder per real Nexus RBAC role (`pm`, `ba`, `dev`, `qa`, plus an optional `lead` for teams that split technical leadership out from PM) — copy-once seeds, same mechanism as `../frameworks/`, not live-shared. Each is a **complete, drop-in package**: the subagent definition plus every document-writing skill that role actually needs —
 
 ```
 roles/<role>/.agents/
@@ -22,6 +22,8 @@ cp -r ~/development/pea/claude-templates/roles/ba/.agents/.  .agents/
 cp -r ~/development/pea/claude-templates/roles/dev/.agents/. .agents/
 cp -r ~/development/pea/claude-templates/roles/qa/.agents/.  .agents/
 cp -r ~/development/pea/claude-templates/roles/pm/.agents/.  .agents/
+# optional — only if this team splits technical leadership out from pm:
+cp -r ~/development/pea/claude-templates/roles/lead/.agents/. .agents/
 ```
 
 **If this repo only uses Claude Code** (no Antigravity/other tool), symlink once so Claude Code picks the files up — do this the first time only, not per role:
@@ -39,7 +41,7 @@ ln -s ../.agents/hooks .claude/hooks
 
 **Multiple roles sharing one repo**: `.agents/hooks/preapprove.py` and `.agents/hooks/settings.local.json.example` are filenames shared across every role's hooks folder (dev's and qa's are genuinely different scripts — qa's has no Write/Edit gating at all, since qa.md deliberately has no Write/Edit tool). Copying more than one role's `.agents/` into the same target with the merge command above means **whichever role you `cp -r` last silently overwrites the previous role's hook** — there is no warning, no conflict error. If you're installing multiple roles into one repo, check `.agents/hooks/preapprove.py` afterward to confirm it's actually the version you meant to end up with (e.g. `grep -l "the dev role" .agents/hooks/preapprove.py` should find it if dev's copy won).
 
-Also install the top-level nexus-mcp workflow skills every role's `agents/*.md` assumes are there (see `../skills/`) — `nexus-plan-work` for pm/ba, `nexus-pick-up-task` for dev/qa, `nexus-consult-teammate`/`nexus-consult-role` for all four — the same `.agents/skills/` target:
+Also install the top-level nexus-mcp workflow skills every role's `agents/*.md` assumes are there (see `../skills/`) — `nexus-plan-work` for pm/ba, `nexus-pick-up-task` for dev/qa/lead, `nexus-consult-teammate`/`nexus-consult-role` for every role installed — the same `.agents/skills/` target:
 
 ```bash
 cp -r ~/development/pea/claude-templates/skills/nexus-plan-work         .agents/skills/

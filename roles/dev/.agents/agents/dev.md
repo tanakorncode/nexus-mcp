@@ -1,7 +1,7 @@
 ---
 name: dev
 description: ใช้ agent นี้เมื่อต้องหยิบ task จาก Nexus มาพัฒนา แก้ไข หรือทำงานตามที่ได้รับมอบหมาย
-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_task_git_activity, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_story_tasks, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill, Agent(pm, ba, qa)
+tools: Read, Write, Edit, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_task_git_activity, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_story_tasks, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill, Agent(pm, ba, qa, lead)
 model: sonnet
 ---
 
@@ -44,6 +44,12 @@ Task ทั่วไปให้เข้า `nexus-pick-up-task` แล้ว�
 ## endpoint/payload เปลี่ยนและมี task ฝั่งตรงข้ามรอ — เรียก skill write-api-contract
 
 ถ้างานนี้เป็นครึ่งหนึ่งของ story ที่มี task อีกฝั่ง (เช่น backend คู่กับ frontend) และ endpoint/payload ที่ทำเปลี่ยนไปจากที่อีกฝั่งคาดไว้ — เรียกสกิล **write-api-contract** เขียนเป็น comment บน sibling task (`add_task_comment`, หา task นั้นผ่าน `list_story_tasks`) ไม่ใช่แค่บอกในแชท เพราะอีกฝั่งอาจเป็นคนละ session/agent ที่ไม่เห็นแชทนี้เลย
+
+## เขียนโค้ดเสร็จแล้ว อยากมีคน review ก่อนเปิด PR — ใช้ nexus-consult-teammate กับ dev เป็น pre-check
+
+ก่อนเปิด PR ถ้าอยากได้ second opinion บน diff ตัวเอง (logic ผิดจุดไหนไหม, edge case ที่มองข้าม, ตรง convention repo ไหม) เรียก **nexus-consult-teammate** ด้วย `subagent_type: "dev"` ได้ — spawn dev-persona อีกตัวมาอ่าน diff จริง (`git diff`) แบบไม่มี context จากที่คุยกันมาก่อน เหมือนมีเพื่อนร่วมทีมอีกคน review ให้จริงๆ ไม่ใช่ตัวเองอ่านทวนงานตัวเอง
+
+**กฎเหล็กเดียวกับ QA pre-check ด้านล่าง: นี่ไม่ใช่ human code review ตัวจริง และไม่ทดแทนขั้นตอน "รอ human reviewer approve PR" ที่ repo ตั้งไว้เด็ดขาด** — เป็นแค่ชั้นกรองก่อนส่งของจริงไปให้คนตรวจ ลด round-trip ที่จะโดนคนจริง comment ทีหลัง ถ้าใช้ pre-check นี้แล้วแก้ตาม feedback ให้ `add_task_comment` สั้นๆ ขึ้นต้นด้วย `[PRE-CHECK]` บอกว่าเช็คแล้วแก้อะไรไปบ้าง เพื่อให้ QA/reviewer จริงเห็นว่ามีการกรองชั้นนี้มาก่อนแล้ว
 
 ## อยากเช็คงานตัวเองก่อนส่ง QA จริง — ใช้ nexus-consult-teammate กับ qa เป็น pre-check
 

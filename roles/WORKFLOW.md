@@ -21,9 +21,9 @@ flowchart LR
     BAUAT -->|"stakeholder sign-off: fail<br/>(ba asks pm to reassign)"| DEV
 ```
 
-1. **pm / ba plan** — `nexus-plan-work`. Either can create the task (ADMIN/PM/BA are the only roles that can — `task:create`/`backlog:manage` are `false` for dev/qa, this is a real server-side 403, not convention). Only **pm** can assign it to anyone freely (`task:assign: true`); **ba cannot assign at all** (`task:assign: false`) — ba creates it unassigned and asks pm to assign, or leaves it for pm to pick up during planning. If the work traces back to a real business need (not a one-line bug fix), ba writes a `write-brd` first and links it to the epic via comment — that link is what step 3 checks for.
-2. **dev implements** — `nexus-pick-up-task`. Reads full context, checks `blockedBy`, matches repo conventions, implements, verifies (tests/lint/build — optionally with a `qa`-persona pre-check first, see dev's own file), opens a PR, hands off: status change + reassign to qa, together (see "why hand-off is one action" below).
-3. **qa tests** — `nexus-pick-up-task`. Checks against acceptance criteria.
+1. **pm / ba plan** — `nexus-plan-work`. Either can create the task (ADMIN/PM/BA are the only roles that can — `task:create`/`backlog:manage` are `false` for dev/qa, this is a real server-side 403, not convention). Only **pm** can assign it to anyone freely (`task:assign: true`); **ba cannot assign at all** (`task:assign: false`) — ba creates it unassigned and asks pm to assign, or leaves it for pm to pick up during planning. If the work traces back to a real business need (not a one-line bug fix), ba writes a `write-brd` first and links it to the epic via comment — that link is what step 3 checks for. ba writes the task's actual description/AC via `write-user-story` (not `nexus-plan-work` itself — that skill only covers which fields/tool calls to set, not what the content should say); pm uses `write-sprint-plan` when the ask is "what goes into the next sprint" rather than a single task.
+2. **dev implements** — `nexus-pick-up-task`. Reads full context, checks `blockedBy`, matches repo conventions, implements, verifies (tests/lint/build — optionally with a `dev`-persona code-review pre-check and/or a `qa`-persona pre-check first, see dev's own file), opens a PR (a real human still has to approve it — the pre-checks below narrow what they find, they don't replace them), hands off: status change + reassign to qa, together (see "why hand-off is one action" below). If the team has a **lead** (see `roles/lead`), they do this exact same step — lead *is* dev, plus one elevated right: reassigning any task in the project, not just one they hold, so they can rebalance work across the dev team without going through pm every time.
+3. **qa tests** — `nexus-pick-up-task`. For a whole feature/release (not a single task), qa writes a `write-test-plan` first to set scope/risk areas; either way, qa writes `write-test-case`s before testing rather than improvising. Checks against acceptance criteria.
    - **Fail** → `write-bug-report`, status back to whatever means "needs rework," reassign back to whoever implemented it. Never just a comment with no reassignment — an unowned task doesn't show up in anyone's list, it just goes quiet.
    - **Pass, no BRD linked** (technical work — bug fix, refactor, infra) → close it out directly, same as before.
    - **Pass, BRD linked** (real business-facing work) → don't close it yet — reassign to ba for UAT, status to whatever means "awaiting UAT."
@@ -36,7 +36,8 @@ That's the whole main line. Everything below is a *side channel* on top of it �
 ## Side channels — questions and pre-checks that don't derail the main sequence
 
 - **A role hits a decision that's genuinely someone else's call mid-step** (not who does the task next — just "what should the answer be") → `nexus-consult-teammate` (same-session, `Agent` tool, fastest, works unattended too) or `nexus-consult-role` (cross-process, real person's real authority, durable `[CONSULT]`/`[ESCALATED]`-tagged record). Neither of these changes who owns the task — the asker keeps working, informed.
-- **dev wants a second look before opening the PR** → same mechanism, `subagent_type: "qa"`, tagged `[PRE-CHECK]` — never a substitute for step 3's real QA pass.
+- **dev wants a second look at the diff before opening the PR** → same mechanism, `subagent_type: "dev"`, tagged `[PRE-CHECK]` — an agent-side code-review pass (logic, edge cases, convention) that narrows what the real human PR reviewer finds. Never a substitute for that human approval — there is no agent-side mechanism that grants PR approval, and none is planned; that gate stays human on purpose.
+- **dev wants a second look at test coverage before opening the PR** → same mechanism, `subagent_type: "qa"`, tagged `[PRE-CHECK]` — never a substitute for step 3's real QA pass.
 
 ## Why hand-off is one action, not two
 
@@ -44,15 +45,17 @@ Every arrow in the diagram above is a **status change and a reassignment happeni
 
 ## Who can create/assign what — the real, server-enforced matrix
 
-| Action | ADMIN | PM | BA | DEV | QA |
-|---|---|---|---|---|---|
-| Create task | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Create/edit epic, story (`backlog:manage`) | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Assign task to anyone (`task:assign`) | ✓ | ✓ | ✗ | owner-only | owner-only |
-| Edit task fields (`task:edit`) | ✓ | ✓ | ✓ | owner-only | owner-only |
-| Comment (`task:comment`) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Action | ADMIN | PM | BA | DEV | LEAD | QA |
+|---|---|---|---|---|---|---|
+| Create task | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Create/edit epic, story (`backlog:manage`) | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Assign task to anyone (`task:assign`) | ✓ | ✓ | ✗ | owner-only | ✓ | owner-only |
+| Edit task fields (`task:edit`) | ✓ | ✓ | ✓ | owner-only | owner-only | owner-only |
+| Comment (`task:comment`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 "owner-only" means: only on a task that role is *currently* the assignee of — a dev can hand off a task they hold, not reassign someone else's. This table is enforced server-side (`src/lib/permissions.ts` in pm-system) — a role's own `.agents/agents/*.md` documents the parts of it that role hits in practice; this table is the one place all of it is visible together.
+
+**LEAD is wired differently from the other six** — it isn't a row in `permissions.ts`'s `DEFAULT_MATRIX` at all. It's a DB-only role (`prisma/seed-add-lead-role.ts`) that sets `parentRoleId` to DEV and adds exactly two `RolePermission` overrides (`task:assign: true`, `workload:view-all: true`). Every other action LEAD has resolves by walking up to DEV's own permissions at request time — so if DEV's rights ever change, LEAD's do too, automatically, with zero code changes. This is the same `parentRoleId` mechanism the schema's own comment names "Lead Dev" as the example for.
 
 ## Not covered here
 
