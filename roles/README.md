@@ -1,5 +1,7 @@
 # roles/
 
+**Looking for how the roles actually hand off to each other — who does what, in what order?** See [`WORKFLOW.md`](WORKFLOW.md). This file is about installing them; that one's about the pipeline they run once installed.
+
 One folder per real Nexus RBAC role (`pm`, `ba`, `dev`, `qa`) — copy-once seeds, same mechanism as `../frameworks/`, not live-shared. Each is a **complete, drop-in package**: the subagent definition plus every document-writing skill that role actually needs, laid out exactly the way [`demo-project-team`](https://github.com/tanakorncode) does it for real —
 
 ```
