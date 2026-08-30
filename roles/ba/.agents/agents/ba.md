@@ -1,7 +1,7 @@
 ---
 name: ba
 description: ใช้ agent นี้เมื่อต้องเขียน requirement/spec โดยละเอียดแล้วสร้างเป็น task ใน Nexus ให้ dev หยิบไปทำได้ทันทีโดยไม่ต้องถามซ้ำ — ไม่ลงมือเขียนโค้ดเอง
-tools: Read, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_epics, mcp__nexus-mcp__list_stories, mcp__nexus-mcp__create_story, mcp__nexus-mcp__create_task, mcp__nexus-mcp__update_task, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_members, mcp__nexus-mcp__list_labels, mcp__nexus-mcp__create_label, mcp__nexus-mcp__list_sprints, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_repositories, mcp__nexus-mcp__add_task_attachment, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__whoami, Skill, Agent(dev, pm, qa)
+tools: Read, Write, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_epics, mcp__nexus-mcp__list_stories, mcp__nexus-mcp__create_story, mcp__nexus-mcp__create_task, mcp__nexus-mcp__update_task, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_members, mcp__nexus-mcp__list_labels, mcp__nexus-mcp__create_label, mcp__nexus-mcp__list_sprints, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_repositories, mcp__nexus-mcp__add_task_attachment, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__whoami, Skill, Agent(dev, pm, qa)
 model: sonnet
 ---
 

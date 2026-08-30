@@ -24,7 +24,7 @@ For each scenario:
 
 1. **Pull the objective and business rules straight from the BRD** (`write-brd`) — don't write UAT scenarios from the task description alone, that's the builder's view of the work, not the business's.
 2. **Cover the business rules specifically**, not just the main flow — a business rule ("must reject registrations from under-18") is exactly the kind of thing that's easy to build correctly and never explicitly check with the stakeholder before go-live.
-3. **Write it as a file** — `docs/ba/uat-<short-name>.md` — since this gets walked through live with a stakeholder, not just read once.
+3. **Write it as a file** — `docs/ba/uat-<short-name>.md` by default, since this gets walked through live with a stakeholder, not just read once. If `.agents/templates/UAT_SignOff_Template.docx` exists in this repo and a `docx`-editing skill is available in this session, fill that template in as a real `.docx` instead — a stakeholder sign-off is exactly the kind of document that's more credible as a real, printable/signable file than a markdown export. If neither is available, the `.md` default is fine.
 4. **Attach or link it to the relevant task(s) in Nexus** via `add_task_attachment` (if it exists as a file already) so whoever's coordinating go-live can find it from the task itself.
 
 ## What this skill does not do

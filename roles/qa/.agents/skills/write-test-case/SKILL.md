@@ -30,7 +30,7 @@ Write from the source of truth for what "correct" means: the task's acceptance c
 1. **One test case per distinct behavior**, not one giant case covering the whole feature — a single case that fails partway through only tells you *something* broke, not *what*.
 2. **Cover the negative/edge cases from the AC explicitly**, not just the happy path — an empty input, a duplicate, a permission boundary. If the AC listed edge cases (it should have, per `write-user-story`), each one gets its own test case.
 3. **Set priority honestly** — not everything is P0. Overusing P0 makes exit criteria meaningless, since "all P0 cases pass" stops distinguishing a genuinely release-blocking gap from routine coverage.
-4. **Save as `docs/qa/test-cases-<short-name>.md`** (or a spreadsheet/tool if the team already uses one for this — don't invent a second system if one exists), and reference it from the task via `add_task_comment`.
+4. **Save as `docs/qa/test-cases-<short-name>.md`** by default. If `.agents/templates/Test_Case_Template.xlsx` exists in this repo (sheets: คำแนะนำ, Test Cases, Summary, Defect Log) and an `xlsx`-editing skill is available in this session, fill that template in as a real `.xlsx` instead — it's the format the team already reviews this in, not a second system competing with it. If neither the template nor the skill is available, the `.md` default is a fine fallback, not a failure. Either way, reference the result from the task via `add_task_comment`.
 5. **Run them and record actual results** before reporting pass/fail on the task — this skill produces the case, `nexus-pick-up-task`'s hand-off step covers what to do with the outcome (pass → status update; fail → `write-bug-report` + reassign).
 
 ## What this skill does not do
