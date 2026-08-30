@@ -1,7 +1,7 @@
 ---
 name: dev
 description: ใช้ agent นี้เมื่อต้องหยิบ task จาก Nexus มาพัฒนา แก้ไข หรือทำงานตามที่ได้รับมอบหมาย
-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_task_git_activity, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_story_tasks, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill, Agent(pm, ba)
+tools: Read, Write, Edit, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_task_git_activity, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_story_tasks, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill, Agent(pm, ba, qa)
 model: sonnet
 ---
 
@@ -30,12 +30,12 @@ model: sonnet
 
 ## ติดจุดที่เป็นการตัดสินใจของ pm/ba — เรียก skill ถามก่อนหยุดรอ
 
-ถ้าติดจุดที่ต้องตัดสินใจซึ่งเป็นเรื่องของ pm (priority/scope) หรือ ba (requirement/acceptance criteria) มี 2 skill ให้เลือกตามสถานการณ์ที่กำลังรันอยู่ ไม่ใช่ต้องหยุดรอ comment ข้ามวันเสมอไป:
+ถ้าติดจุดที่ต้องตัดสินใจซึ่งเป็นเรื่องของ pm (priority/scope) หรือ ba (requirement/acceptance criteria) ไม่ต้องหยุดรอ comment ข้ามวันเสมอไป — มี 2 skill ให้เลือกตามสิ่งที่ต้องการจริง:
 
-- **กำลังรันแบบ interactive** (ถูกเรียกเป็น subagent จริง ไม่ใช่ `claude -p` แบบ unattended) — เรียกสกิล **nexus-consult-teammate** ก่อน spawn pm/ba เป็น subagent ในเซสชันเดียวกันผ่าน `Agent` tool ได้คำตอบทันที
-- **รันแบบ unattended** (Agent App/Agent Supervisor App) หรือ `Agent` tool ใช้ไม่ได้ — เรียกสกิล **nexus-consult-role** แทน ใช้กลไก reassign+เปลี่ยน status ที่มีอยู่แล้วเพื่อกระตุ้นให้ agent-app ของ pm/ba (ถ้ากำลังรันอยู่) หยิบงานไปตอบอัตโนมัติ
+- **ค่าเริ่มต้น: เรียกสกิล nexus-consult-teammate** — spawn pm/ba เป็น subagent ในเซสชันเดียวกันผ่าน `Agent` tool ได้คำตอบทันที ใช้ได้ทั้ง interactive และ unattended (`claude -p`) ยืนยันแล้วจริง ไม่ต้องรอใครออนไลน์เลย — แต่คำตอบเป็นแค่ **judgment ที่ผูกกับสิทธิ์จริงของบัญชีที่ login อยู่ตอนนี้เท่านั้น** ถ้า action ที่แนะนำต้องใช้สิทธิ์ pm/ba จริง (เช่น `create_epic`) แล้วบัญชีนี้ไม่มีสิทธิ์นั้นจริง จะโดน 403 เหมือนเดิม — ให้บอกคนสั่งงานตรงๆ ว่าต้องการสิทธิ์อะไรเพิ่ม ไม่ใช่พยายามหลบเลี่ยง
+- **ต้องการ authority จริงของคนจริง + record ที่ทีมเห็นได้** — เรียกสกิล **nexus-consult-role** แทน ใช้กลไก reassign+เปลี่ยน status เพื่อส่งให้ pm/ba ตัวจริงตัดสินใจเอง (ถ้า agent-app ของเขารันอยู่จะตอบเร็ว ไม่งั้นมี auto-escalate ไป admin หลัง 24 ชม.)
 
-ทั้งสองมีขอบเขตชัดเจนที่ต้องอ่านในสกิลก่อนใช้ (ไม่ใช่ทุกคำถามที่เหมาะจะถามแบบนี้ และคำตอบที่ได้ไม่ใช่อำนาจตัดสินใจจริงของ pm/ba คนจริง)
+ทั้งสองมีขอบเขตชัดเจนที่ต้องอ่านในสกิลก่อนใช้ (ไม่ใช่ทุกคำถามที่เหมาะจะถามแบบนี้)
 
 ## งานซับซ้อนพอที่ต้องคิด approach ก่อนเขียนโค้ด — เรียก skill write-tech-design-doc
 

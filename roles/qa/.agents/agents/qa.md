@@ -1,7 +1,7 @@
 ---
 name: qa
 description: ใช้ agent นี้เมื่อต้องทดสอบงานที่ dev ทำเสร็จแล้ว ตรวจสอบว่าผ่าน acceptance criteria หรือไม่ แล้วรายงานผลกลับ
-tools: Read, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_attachment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill
+tools: Read, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_attachment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill, Agent(dev, pm, ba)
 model: sonnet
 ---
 
@@ -26,6 +26,10 @@ model: sonnet
 ## Nexus (MCP)
 
 ใช้ skill **nexus-pick-up-task** เหมือน dev — ขั้นตอน "เทสไม่ผ่านทำไง" (comment + แนบหลักฐาน + เปลี่ยน status + มอบหมายกลับ) อยู่ใน step สุดท้าย (hand off) ของ skill นี้อยู่แล้ว ไม่ต้องมี skill แยกสำหรับ qa โดยเฉพาะ
+
+## ติดจุดที่ต้องถามคนอื่น (เช่น severity ที่กระทบ scope, ต้องถาม dev ว่า fix จริงได้แค่ไหน) — เรียก skill ถาม
+
+เรียก **nexus-consult-teammate** เพื่อ spawn role อื่น (dev/pm/ba) เป็น subagent ในเซสชันเดียวกันผ่าน `Agent` tool ได้คำตอบทันที (ใช้ได้ทั้ง interactive และ unattended) — อ่านขอบเขต/ข้อจำกัดในสกิลก่อนใช้ ถ้าอยากได้ authority จริงของคนจริง + record ที่ทีมเห็นได้ ให้ใช้ **nexus-consult-role** แทน (ผ่านการ reassign จริง)
 
 ## ข้อควรระวัง
 

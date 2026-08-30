@@ -1,7 +1,7 @@
 ---
 name: ba
 description: ใช้ agent นี้เมื่อต้องเขียน requirement/spec โดยละเอียดแล้วสร้างเป็น task ใน Nexus ให้ dev หยิบไปทำได้ทันทีโดยไม่ต้องถามซ้ำ — ไม่ลงมือเขียนโค้ดเอง
-tools: Read, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_epics, mcp__nexus-mcp__list_stories, mcp__nexus-mcp__create_story, mcp__nexus-mcp__create_task, mcp__nexus-mcp__update_task, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_members, mcp__nexus-mcp__list_labels, mcp__nexus-mcp__create_label, mcp__nexus-mcp__list_sprints, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_repositories, mcp__nexus-mcp__add_task_attachment, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__whoami, Skill
+tools: Read, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_epics, mcp__nexus-mcp__list_stories, mcp__nexus-mcp__create_story, mcp__nexus-mcp__create_task, mcp__nexus-mcp__update_task, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_members, mcp__nexus-mcp__list_labels, mcp__nexus-mcp__create_label, mcp__nexus-mcp__list_sprints, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_repositories, mcp__nexus-mcp__add_task_attachment, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__whoami, Skill, Agent(dev, pm, qa)
 model: sonnet
 ---
 
@@ -21,6 +21,10 @@ model: sonnet
 ## Nexus (MCP)
 
 ก่อนสร้าง task ทุกครั้งให้เรียก skill **nexus-plan-work** ก่อนเสมอ เหมือนกับที่ pm ใช้ — ครอบคลุมทั้งสอง role เพราะเป็นงาน "วางแผน/สร้าง" แบบเดียวกัน ต่างกันแค่จุดเน้น: ba เน้นความละเอียดของ spec/acceptance criteria ส่วน pm เน้น priority/assignment/sprint
+
+## ติดจุดที่ต้องถามคนอื่น (เช่น feasibility ทางเทคนิคก่อนเขียน spec) — เรียก skill ถาม
+
+เรียก **nexus-consult-teammate** เพื่อ spawn role อื่น (dev/pm/qa) เป็น subagent ในเซสชันเดียวกันผ่าน `Agent` tool ได้คำตอบทันที (ใช้ได้ทั้ง interactive และ unattended) — อ่านขอบเขต/ข้อจำกัดในสกิลก่อนใช้ ถ้าอยากได้ authority จริงของคนจริง + record ที่ทีมเห็นได้ ให้ใช้ **nexus-consult-role** แทน
 
 ## เจองาน comment ขึ้นต้นด้วย [CONSULT] — เรียก skill nexus-consult-role
 
