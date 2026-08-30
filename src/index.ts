@@ -662,13 +662,21 @@ server.tool(
   },
 );
 
-server.tool("list_members", "List team members sharing a project with the current user.", {}, async () => {
-  try {
-    return textResult(await client.listMembers());
-  } catch (err) {
-    return errorResult(err);
-  }
-});
+server.tool(
+  "list_members",
+  "List team members sharing a project with the current user. Pass projectId with role to resolve who holds a specific role on that project (e.g. role: ['PM'] to find who to consult/reassign a task to) — role is per-project (someone can be PM on one project and DEV on another), so it's only returned when projectId is given; without it every member's role comes back null.",
+  {
+    projectId: z.string().optional().describe("Required to get each member's role for that project — omit to just list the roster."),
+    role: z.array(z.string()).optional().describe("Filter to members holding any of these roles on projectId, e.g. ['PM', 'BA']. Only applies when projectId is set."),
+  },
+  async ({ projectId, role }) => {
+    try {
+      return textResult(await client.listMembers({ projectId, role }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

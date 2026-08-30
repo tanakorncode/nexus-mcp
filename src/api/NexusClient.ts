@@ -202,6 +202,7 @@ export interface Member {
   displayRole: string | null;
   avatarColor: string | null;
   email: string;
+  role: string | null;
 }
 
 export type SprintStatus = "UPCOMING" | "ACTIVE" | "COMPLETED";
@@ -586,8 +587,11 @@ export class NexusClient {
   // Not cached: project membership changes (e.g. someone just got added) need
   // to show up on the next call, not after a process restart.
 
-  async listMembers(): Promise<Member[]> {
-    const { data } = await this.request<{ data: Member[] }>("GET", "/api/v1/members");
+  async listMembers(params: { projectId?: string; role?: string[] } = {}): Promise<Member[]> {
+    const { data } = await this.request<{ data: Member[] }>(
+      "GET",
+      `/api/v1/members${this.qs({ projectId: params.projectId, role: params.role?.join(",") })}`,
+    );
     return data;
   }
 
@@ -605,6 +609,7 @@ export class NexusClient {
         email: tokens.user.email,
         displayRole: null,
         avatarColor: null,
+        role: null,
       };
     }
 

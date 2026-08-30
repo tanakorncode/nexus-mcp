@@ -28,9 +28,14 @@ model: sonnet
 
 ก่อนเริ่มงานทุกครั้งให้เรียก skill **nexus-pick-up-task** ก่อนเสมอ — ครอบคลุมตั้งแต่หา task, เช็ค `blockedBy`, ไปจนถึงขั้นตอน hand off ท้ายสุด (เปลี่ยน status + มอบหมายต่อ) ในตัว
 
-## ติดจุดที่เป็นการตัดสินใจของ pm/ba — เรียก skill nexus-consult-teammate ก่อนหยุดรอ
+## ติดจุดที่เป็นการตัดสินใจของ pm/ba — เรียก skill ถามก่อนหยุดรอ
 
-ถ้ากำลังรันแบบ interactive (ถูกเรียกเป็น subagent จริง ไม่ใช่ `claude -p` แบบ unattended) และติดจุดที่ต้องตัดสินใจซึ่งเป็นเรื่องของ pm (priority/scope) หรือ ba (requirement/acceptance criteria) ให้ลองเรียกสกิล **nexus-consult-teammate** ก่อน — spawn pm/ba เป็น subagent ในเซสชันเดียวกันผ่าน `Agent` tool ได้คำตอบเร็วกว่ารอ comment ตอบกลับข้ามวัน แต่มีขอบเขตชัดเจนที่ต้องอ่านในสกิลก่อนใช้ (ไม่ใช่ทุกคำถามที่เหมาะจะถามแบบนี้ และคำตอบที่ได้ไม่ใช่อำนาจตัดสินใจจริงของ pm/ba คนจริง) ถ้า `Agent` tool ใช้ไม่ได้ (เช่นตอนรัน unattended) ให้ข้ามไปใช้ `nexus-pick-up-task` step 7 ตามปกติ
+ถ้าติดจุดที่ต้องตัดสินใจซึ่งเป็นเรื่องของ pm (priority/scope) หรือ ba (requirement/acceptance criteria) มี 2 skill ให้เลือกตามสถานการณ์ที่กำลังรันอยู่ ไม่ใช่ต้องหยุดรอ comment ข้ามวันเสมอไป:
+
+- **กำลังรันแบบ interactive** (ถูกเรียกเป็น subagent จริง ไม่ใช่ `claude -p` แบบ unattended) — เรียกสกิล **nexus-consult-teammate** ก่อน spawn pm/ba เป็น subagent ในเซสชันเดียวกันผ่าน `Agent` tool ได้คำตอบทันที
+- **รันแบบ unattended** (Agent App/Agent Supervisor App) หรือ `Agent` tool ใช้ไม่ได้ — เรียกสกิล **nexus-consult-role** แทน ใช้กลไก reassign+เปลี่ยน status ที่มีอยู่แล้วเพื่อกระตุ้นให้ agent-app ของ pm/ba (ถ้ากำลังรันอยู่) หยิบงานไปตอบอัตโนมัติ
+
+ทั้งสองมีขอบเขตชัดเจนที่ต้องอ่านในสกิลก่อนใช้ (ไม่ใช่ทุกคำถามที่เหมาะจะถามแบบนี้ และคำตอบที่ได้ไม่ใช่อำนาจตัดสินใจจริงของ pm/ba คนจริง)
 
 ## งานซับซ้อนพอที่ต้องคิด approach ก่อนเขียนโค้ด — เรียก skill write-tech-design-doc
 
