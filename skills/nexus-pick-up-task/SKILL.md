@@ -31,6 +31,8 @@ Framework-agnostic *within* nexus-mcp projects — applies the same way whether 
 
 9. **Verify before calling anything done.** Run this repo's actual test/lint/build commands (per its `CLAUDE.md` or `package.json` scripts) — don't skip this because it feels like it should pass. A change that compiles isn't the same as a change that was checked.
 
+   Optionally, on top of that — not instead of it — use `nexus-consult-teammate` with `subagent_type: "qa"` as a same-session pre-check: hand it the task and what changed, let it check against acceptance criteria and run whatever it thinks is relevant, fix anything it finds before opening the PR. **This never replaces step 11's real hand-off to QA** — do that exactly the same way regardless of whether a pre-check ran or what it found. If you do this, mark the comment clearly as a pre-check (e.g. a `[PRE-CHECK]` prefix), not a QA sign-off — it's the same account posting either way (see `nexus-consult-teammate`'s own note on this), and nobody reading the task later should mistake a same-machine self-check for independent verification.
+
 10. **Open a PR/MR — never push directly to a protected branch (`main`/`develop`/whatever this repo protects).** This is the review checkpoint: a human looks at the diff before it lands, regardless of how confident the implementation felt. Don't merge it yourself even if you technically could.
 
 11. **Hand off — status, and reassignment if the next step belongs to someone else.** Once the PR is open, or once your part is done and someone else needs to act next, two things move together, not just one:

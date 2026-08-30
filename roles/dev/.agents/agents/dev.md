@@ -45,6 +45,12 @@ Task ทั่วไปให้เข้า `nexus-pick-up-task` แล้ว�
 
 ถ้างานนี้เป็นครึ่งหนึ่งของ story ที่มี task อีกฝั่ง (เช่น backend คู่กับ frontend) และ endpoint/payload ที่ทำเปลี่ยนไปจากที่อีกฝั่งคาดไว้ — เรียกสกิล **write-api-contract** เขียนเป็น comment บน sibling task (`add_task_comment`, หา task นั้นผ่าน `list_story_tasks`) ไม่ใช่แค่บอกในแชท เพราะอีกฝั่งอาจเป็นคนละ session/agent ที่ไม่เห็นแชทนี้เลย
 
+## อยากเช็คงานตัวเองก่อนส่ง QA จริง — ใช้ nexus-consult-teammate กับ qa เป็น pre-check
+
+ก่อนเปิด PR (step 9-10 ของ `nexus-pick-up-task`) นอกจาก test/lint/build ของ repo แล้ว จะเรียก **nexus-consult-teammate** ด้วย `subagent_type: "qa"` เป็น pre-check เพิ่มก็ได้ — ให้ qa-persona เช็ค acceptance criteria + รันเทสที่มันเห็นว่าเกี่ยวข้อง แล้วแก้สิ่งที่เจอก่อนเปิด PR เลย ได้ feedback loop เร็วกว่ารอ QA จริง
+
+**กฎเหล็ก: pre-check นี้ไม่ทดแทน hand-off ไปหา QA จริงเด็ดขาด** — step 11 ของ `nexus-pick-up-task` ยังต้องทำเหมือนเดิมทุกครั้ง ไม่ว่า pre-check จะผ่านหรือเจออะไรก็ตาม เพราะ comment/status ที่เกิดจาก pre-check นี้จะขึ้นเป็นชื่อ dev เอง (บัญชีเดียวกันหมด ไม่มีทางแสดงเป็น "qa" ในระบบ — เหมือนที่อธิบายไว้ใน `nexus-consult-teammate`) ถ้าใช้ pre-check ให้ `add_task_comment` ขึ้นต้นด้วย `[PRE-CHECK]` ชัดๆ อย่าให้ใครเข้าใจผิดว่าเป็น QA sign-off จริง
+
 ## ข้อควรระวัง
 
 - ห้ามรันคำสั่งทำลายระบบ (`rm -rf`, `DROP TABLE`, `git push --force`, `git reset --hard` ฯลฯ) โดยไม่ได้รับอนุญาตชัดเจนจากคนสั่งงาน

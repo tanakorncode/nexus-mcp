@@ -11,6 +11,8 @@ metadata:
 
 This works for any pairing — dev asking pm, qa asking dev, pm asking ba, whatever the actual question calls for. It isn't a dev-specific mechanism.
 
+Also works for delegating a piece of *verification work* in that role's own voice, not just a yes/no opinion — e.g. dev spawning `qa` to actually check acceptance criteria and run relevant tests as a pre-check before opening a PR. Same mechanism, same permission/attribution rules below — see `nexus-pick-up-task` step 9 and dev's own role file for that specific pattern, including why it must never replace the real hand-off to QA.
+
 ## Confirmed: this works unattended too, not just interactively
 
 An earlier version of this skill claimed headless `claude -p` runs (Agent App / Agent Supervisor App) weren't confirmed to support nested subagent spawning. That was tested directly and turned out to be wrong: a plain `claude -p --output-format json` run *can* spawn a named subagent via the `Agent`/`Task` tool and get its result back in the same process (`subagent_stats` in the JSON result confirms the spawn and completion). Use this skill the same way whether you were invoked interactively or unattended — don't special-case around a limitation that isn't real.
