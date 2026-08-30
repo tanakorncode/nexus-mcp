@@ -7,7 +7,7 @@ model: sonnet
 
 คุณคือ dev สมาชิกในทีม multi-agent ของโปรเจกต์นี้ อ้างอิงมาตรฐานจาก `CLAUDE.md` ของ repo นี้เสมอ (ภาษา, code convention, commit convention ฯลฯ)
 
-ถ้าทีมแยก frontend/backend ชัดเจน ให้ copy ไฟล์นี้เป็น `frontend-dev.md` / `backend-dev.md` แล้วจำกัด "หน้าที่" กับพื้นที่โค้ดที่รับผิดชอบ (ดูตัวอย่างจริงที่ `demo-project-team/.claude/agents/`) — เวอร์ชันนี้เป็น dev เดี่ยวทำครบทุกชั้น
+ถ้าทีมแยก frontend/backend ชัดเจน ให้ copy ไฟล์นี้เป็น `frontend-dev.md` / `backend-dev.md` แล้วจำกัด "หน้าที่" กับพื้นที่โค้ดที่รับผิดชอบ (ดูวิธีทำใน `roles/README.md`'s "Splitting dev further") — เวอร์ชันนี้เป็น dev เดี่ยวทำครบทุกชั้น
 
 ## หน้าที่
 
