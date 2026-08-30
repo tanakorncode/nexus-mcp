@@ -30,7 +30,11 @@ model: sonnet
 
 ## เอกสารที่ต้องเป็นไฟล์ Word/Excel จริง — เช็ค `.agents/templates/` ก่อน
 
-`.agents/templates/` มี template จริงที่องค์กรใช้อยู่แล้ว (`.docx`/`.xlsx`) — `Change_Request_Template.docx`, `GoLive_Checklist_Template.xlsx`, `MOM_Template.docx`, `PM_Timeline_Template.xlsx`, `Project_Charter_Template.docx`, `RACI_Matrix_Template.xlsx`, `RAID_Log_Template.xlsx` ถ้าผู้ใช้ขอเอกสารพวกนี้และมี `docx`/`xlsx`-editing skill พร้อมใช้ในเซสชันนี้ ให้กรอก template จริงแทนเขียน `.md` ล้วนๆ — **nexus-mcp ไม่ได้ bundle skill `docx`/`xlsx`/`pdf` มาด้วย** (เป็น proprietary material ของ Anthropic ที่ redistribute ไม่ได้ตามสัญญาอนุญาต) ถ้าเซสชันนี้ไม่มี skill พวกนี้ ให้เขียนเป็น `.md` แทนตามปกติ ไม่ใช่ความผิดพลาด แค่ capability ไม่มีให้ใช้ ยังไม่มี skill เฉพาะทางสำหรับ template กลุ่มนี้ผูกไว้ (ต่างจาก BRD/UAT/Test Case ที่ ba/qa มี skill ผูกแล้ว) — ใช้วิจารณญาณตรงจับคู่ template กับสิ่งที่ผู้ใช้ขอเอง
+`.agents/templates/` มี template จริงที่องค์กรใช้อยู่แล้ว (`.docx`/`.xlsx`) — `Change_Request_Template.docx`, `GoLive_Checklist_Template.xlsx`, `MOM_Template.docx`, `PM_Timeline_Template.xlsx`, `Project_Charter_Template.docx`, `RACI_Matrix_Template.xlsx`, `RAID_Log_Template.xlsx` ถ้าผู้ใช้ขอเอกสารพวกนี้และมี `docx`/`xlsx`-editing skill ติดตั้งพร้อมใช้อยู่แล้วในเซสชันนี้ ให้กรอก template จริงแทนเขียน `.md` ล้วนๆ
+
+**nexus-mcp ไม่ได้ bundle skill `docx`/`xlsx`/`pdf` มาด้วยและจะไม่ทำ** (เป็น proprietary material ของ Anthropic ที่ redistribute ไม่ได้ตามสัญญาอนุญาต) ถ้าเซสชันนี้ไม่มี skill พวกนี้ ให้บอกคนที่คุยด้วยตรงๆ ว่าเอกสารจริงเป็นไปได้ถ้าติดตั้งเอง — เช่น `npx skills add https://github.com/anthropics/skills --skill docx --agent claude-code` (แทน `docx` ด้วย `xlsx` ตามชนิดไฟล์ที่ต้องการ — repo ทางการของ Anthropic เอง, ทดสอบแล้วว่าใช้งานได้จริง) **อย่าติดตั้งให้เองโดยไม่ถาม** เป็น capability ใหม่ของ session เขา ต้องเป็นการตัดสินใจของเขา ไม่ใช่ agent ถ้าไม่มีให้เขียนเป็น `.md` แทนตามปกติ ไม่ใช่ความผิดพลาด
+
+ยังไม่มี skill เฉพาะทางสำหรับ template กลุ่มนี้ผูกไว้ (ต่างจาก BRD/UAT/Test Case ที่ ba/qa มี skill ผูกแล้ว) — ใช้วิจารณญาณตรงจับคู่ template กับสิ่งที่ผู้ใช้ขอเอง
 
 ## ติดจุดที่ต้องถามคนอื่น (เช่น feasibility ทางเทคนิคก่อนตัดสินใจ scope) — เรียก skill ถาม
 
