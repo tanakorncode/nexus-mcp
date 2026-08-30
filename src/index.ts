@@ -412,6 +412,39 @@ server.tool(
 );
 
 server.tool(
+  "list_subtasks",
+  "List a task's subtasks. A subtask is a plain task with parentId set to this one — not a separate type, just nested. Read-only counterpart to create_subtask.",
+  { taskId: z.string() },
+  async ({ taskId }) => {
+    try {
+      return textResult(await client.listSubtasks(taskId));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "create_subtask",
+  "Create a subtask under an existing task — breaks it into a smaller nested task, not a new top-level board card. Inherits project/epic/story/sprint/repository from the parent automatically, so only name is required. Governed by subtask:create, a separate permission from task:create — DEV/QA/LEAD have this even though they can't create top-level tasks (see create_task), because breaking down existing work is a different call than deciding the project needs new work.",
+  {
+    taskId: z.string().describe("The parent task this becomes a subtask of."),
+    name: z.string(),
+    description: z.string().optional(),
+    priority: z.enum(["LOW", "MEDIUM", "HIGH", "HIGHEST"]).optional(),
+    assigneeId: z.string().optional().describe("See list_members."),
+    dueDate: z.string().optional().describe("ISO date string."),
+  },
+  async ({ taskId, ...rest }) => {
+    try {
+      return textResult(await client.createSubtask(taskId, rest));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
   "update_task",
   "Change any field on an existing task — name/description/priority/dueDate/storyPoints/archived, or story/repository/blocked-by/sprint/assignee/labels. Pass null for storyId/repositoryId/blockedById/sprintId/assigneeId/dueDate/description to unset one, omit fields you don't want to change. labelIds is a full replace, not a diff — pass the complete set of label ids the task should end up with (use list_labels to see ids, get_task to see the task's current labelIds via taskLabels). To archive a mistaken/duplicate task, pass archived: true — pass archived: false to bring it back. Note: status changes go through update_task_status, not this tool.",
   {
@@ -586,6 +619,27 @@ server.tool(
     try {
       const id = await resolveProjectId(projectId);
       return textResult((await client.listSprints({ projectId: id, status })).data);
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.tool(
+  "create_sprint",
+  "Create a new sprint in a project. Starts as UPCOMING and gets the next sequential number for the project automatically — number isn't something you pass. Requires sprint:manage (ADMIN/PM only — this 403s for every other role, same as create_epic/create_story).",
+  {
+    projectId: z.string().optional().describe("Nexus project id. Omit to auto-detect from the current repo."),
+    name: z.string(),
+    startDate: z.string().describe("ISO date string."),
+    endDate: z.string().describe("ISO date string, must not be before startDate."),
+    phase: z.string().optional(),
+    goals: z.string().optional(),
+  },
+  async ({ projectId, ...rest }) => {
+    try {
+      const id = await resolveProjectId(projectId);
+      return textResult(await client.createSprint({ projectId: id, ...rest }));
     } catch (err) {
       return errorResult(err);
     }

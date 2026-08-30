@@ -216,6 +216,28 @@ export interface Sprint {
   endDate: string;
 }
 
+/**
+ * A subtask is a plain Task row with parentId pointing at its parent —
+ * not a separate entity type in Nexus itself. This is a lighter shape than
+ * Task (no epic/story/sprint/repository refs) matching what
+ * /api/v1/tasks/:id/subtasks actually returns.
+ */
+export interface Subtask {
+  id: string;
+  taskKey: string;
+  url: string;
+  name: string;
+  description: string | null;
+  status: string;
+  statusId: string | null;
+  priority: Priority;
+  parentId: string;
+  assignee: AssigneeRef | null;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface GitRepository {
   id: string;
   projectId: string;
@@ -447,6 +469,34 @@ export class NexusClient {
     return data;
   }
 
+  // ── Subtasks ──────────────────────────────────────────────────────────────
+  // A subtask is a Task row with parentId set — see the Subtask type above.
+  // Inherits projectId/epicId/storyId/sprintId/repositoryId from its parent
+  // automatically; only name (required) and the fields below need passing.
+
+  async listSubtasks(taskId: string): Promise<Subtask[]> {
+    const { data } = await this.request<{ data: Subtask[] }>("GET", `/api/v1/tasks/${taskId}/subtasks`);
+    return data;
+  }
+
+  async createSubtask(
+    taskId: string,
+    input: {
+      name: string;
+      description?: string;
+      priority?: Priority;
+      assigneeId?: string;
+      dueDate?: string;
+    },
+  ): Promise<Subtask> {
+    const { data } = await this.request<{ data: Subtask }>(
+      "POST",
+      `/api/v1/tasks/${taskId}/subtasks`,
+      input,
+    );
+    return data;
+  }
+
   // ── Epics / Stories ───────────────────────────────────────────────────────
 
   async listEpics(projectId?: string): Promise<Epic[]> {
@@ -541,6 +591,18 @@ export class NexusClient {
     perPage?: number;
   }): Promise<Paged<Sprint>> {
     return this.request<Paged<Sprint>>("GET", `/api/v1/sprints${this.qs(params)}`);
+  }
+
+  async createSprint(input: {
+    projectId: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    phase?: string;
+    goals?: string;
+  }): Promise<Sprint> {
+    const { data } = await this.request<{ data: Sprint }>("POST", "/api/v1/sprints", input);
+    return data;
   }
 
   // ── Repositories ──────────────────────────────────────────────────────────

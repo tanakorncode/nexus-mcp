@@ -11,6 +11,7 @@ A sprint plan is a commitment, not a wishlist — it exists so the team and stak
 
 ## Steps
 
+0. **Make sure the sprint itself exists first.** Check `list_sprints` — if the one you're planning into isn't there yet, `create_sprint` it before anything else. It starts `UPCOMING` with the next sequential number for the project assigned automatically.
 1. **Check capacity first, not last.** `list_members` for who's on the team, and ask (or check known leave/other commitments) who's actually available this sprint — planning against nominal headcount instead of real availability is the single most common way a sprint plan becomes fiction by day 3.
 2. **Pull the real backlog**, ordered by priority — `list_stories`/`search_tasks` scoped to the project, not a list from memory. Don't reorder based on what seems urgent in the moment; if priority looks wrong, that's a conversation with the stakeholder, not something to silently fix while planning.
 3. **Check for blockers before committing a task to the sprint** — a task with a non-`DONE` `blockedBy` shouldn't go in, the same rule `nexus-pick-up-task` applies when picking up a single task, just checked in bulk here.

@@ -167,6 +167,8 @@ Read the skill files themselves for the full step-by-step — this README won't 
 | `list_labels` / `create_label` | Labels in a project / create a new one |
 | `create_task` | New task — `epicId` required; set `storyId`/`repositoryId`/`blockedById`/`assigneeId`/`sprintId`/`labelIds` at creation if known |
 | `update_task` | Change name/description/priority/dueDate/storyPoints/archived/`storyId`/`repositoryId`/`blockedById`/`sprintId`/`assigneeId`/`labelIds` on an existing task (`null` unsets a field; `labelIds` is a full replace, not a diff) — `archived: true`/`false` archives/restores instead of deleting |
+| `list_subtasks` / `create_subtask` | A task's subtasks / add one — a subtask is a plain task with `parentId` set, not a separate type; inherits project/epic/story/sprint/repository from the parent automatically. Creating one is gated by `subtask:create`, a separate permission from `task:create` (DEV/QA/LEAD have it even though they can't create top-level tasks) |
+| `create_sprint` | New sprint in a project — starts `UPCOMING`, number auto-assigned next-in-sequence. Gated by `sprint:manage` (ADMIN/PM only) |
 | `list_task_git_activity` | Commits/MRs linked to a task, newest first — read-only, populated by GitLab webhooks |
 | `add_task_attachment` | Upload a local file (screenshot, export, doc — 10MB cap) to a task |
 
@@ -200,10 +202,7 @@ This only checks; a person still has to open Claude Code and say "go" once notif
 
 ## Known limits
 
-- No attachment/embed *upload* via API (reading them works — `get_task` returns both) — attach Figma links/screenshots through the product UI.
+- No embed *upload* via API (reading them works — `get_task` returns them) — attach Figma links/unfurled embeds through the product UI. File attachments *are* supported (`add_task_attachment`).
 - No hard delete for epics/stories/labels — only `archived` on tasks (soft, reversible). Real delete would need cascade-safety design work not done yet; use the product UI for now.
-- No search-by-keyword — `list_my_tasks` filters by `status`/`repositoryId` only, `get_task_by_key` needs the exact key.
-- No sprint assignment on tasks/stories via API (`sprintId` is readable, not settable) — set it through the product UI.
-- No multi-assignee/reviewer — `assigneeId` is a single value.
 - Repo-scoped, story-scoped, and label-filtered queries only return results once someone actually sets `repositoryId`/`storyId`/`labelIds` on tasks — nothing is inferred automatically.
 - `list_*` tools have no pagination — fine at current scale, revisit if a project's task count grows a lot.
