@@ -25,7 +25,7 @@ Framework-agnostic *within* nexus-mcp projects — applies the same way whether 
 
 6. **Decide if this needs a design doc before touching code.** Most tasks don't — go straight to step 7. But if this one introduces a new data model, crosses service boundaries, or has more than one reasonable implementation approach, use `write-tech-design-doc` first and get it reviewed via a task comment before implementing. Getting the *approach* wrong is expensive to discover after the code's written; this step exists to catch that while it's still cheap to redirect.
 
-7. **When genuinely ambiguous after 3–6** (no Figma/attachment, no comparable existing pattern in the repo) — stop and ask, don't guess and ship. If someone's actively running this session, ask in chat. If not (a scheduled/unattended run, or the answer needs to persist for whoever picks this up next), use `add_task_comment` instead — it's the durable option that survives past this session, chat isn't.
+7. **When genuinely ambiguous after 3–6** (no Figma/attachment, no comparable existing pattern in the repo) — stop and ask, don't guess and ship. If the ambiguity is specifically a pm/ba-shaped judgment call and the `Agent` tool is available (running as a spawned subagent, not headless `claude -p`), try `nexus-consult-teammate` first — same session, faster than waiting on a reply. Otherwise: if someone's actively running this session, ask in chat. If not (a scheduled/unattended run, or the answer needs to persist for whoever picks this up next), use `add_task_comment` instead — it's the durable option that survives past this session, chat isn't.
 
 8. **Implement, following this repo's git conventions** (see the imported team conventions in this repo's `CLAUDE.md` for the commit format).
 

@@ -1,7 +1,7 @@
 ---
 name: dev
 description: ใช้ agent นี้เมื่อต้องหยิบ task จาก Nexus มาพัฒนา แก้ไข หรือทำงานตามที่ได้รับมอบหมาย
-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_task_git_activity, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_story_tasks, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill
+tools: Read, Write, Edit, Bash, Grep, Glob, mcp__nexus-mcp__list_projects, mcp__nexus-mcp__get_current_project, mcp__nexus-mcp__list_my_tasks, mcp__nexus-mcp__get_current_task, mcp__nexus-mcp__get_current_repository, mcp__nexus-mcp__get_task, mcp__nexus-mcp__get_task_by_key, mcp__nexus-mcp__search_tasks, mcp__nexus-mcp__list_task_comments, mcp__nexus-mcp__list_task_git_activity, mcp__nexus-mcp__list_task_assignees, mcp__nexus-mcp__list_story_tasks, mcp__nexus-mcp__list_statuses, mcp__nexus-mcp__list_members, mcp__nexus-mcp__update_task, mcp__nexus-mcp__update_task_status, mcp__nexus-mcp__add_task_comment, mcp__nexus-mcp__add_task_assignee, mcp__nexus-mcp__whoami, Skill, Agent(pm, ba)
 model: sonnet
 ---
 
@@ -27,6 +27,10 @@ model: sonnet
 ## Nexus (MCP)
 
 ก่อนเริ่มงานทุกครั้งให้เรียก skill **nexus-pick-up-task** ก่อนเสมอ — ครอบคลุมตั้งแต่หา task, เช็ค `blockedBy`, ไปจนถึงขั้นตอน hand off ท้ายสุด (เปลี่ยน status + มอบหมายต่อ) ในตัว
+
+## ติดจุดที่เป็นการตัดสินใจของ pm/ba — เรียก skill nexus-consult-teammate ก่อนหยุดรอ
+
+ถ้ากำลังรันแบบ interactive (ถูกเรียกเป็น subagent จริง ไม่ใช่ `claude -p` แบบ unattended) และติดจุดที่ต้องตัดสินใจซึ่งเป็นเรื่องของ pm (priority/scope) หรือ ba (requirement/acceptance criteria) ให้ลองเรียกสกิล **nexus-consult-teammate** ก่อน — spawn pm/ba เป็น subagent ในเซสชันเดียวกันผ่าน `Agent` tool ได้คำตอบเร็วกว่ารอ comment ตอบกลับข้ามวัน แต่มีขอบเขตชัดเจนที่ต้องอ่านในสกิลก่อนใช้ (ไม่ใช่ทุกคำถามที่เหมาะจะถามแบบนี้ และคำตอบที่ได้ไม่ใช่อำนาจตัดสินใจจริงของ pm/ba คนจริง) ถ้า `Agent` tool ใช้ไม่ได้ (เช่นตอนรัน unattended) ให้ข้ามไปใช้ `nexus-pick-up-task` step 7 ตามปกติ
 
 ## งานซับซ้อนพอที่ต้องคิด approach ก่อนเขียนโค้ด — เรียก skill write-tech-design-doc
 
