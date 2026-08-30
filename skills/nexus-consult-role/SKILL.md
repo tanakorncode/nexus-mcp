@@ -43,6 +43,8 @@ You only know what's in Nexus and the repo — same information the asker alread
 
 This only reaches someone whose **own per-person Agent App** is currently running and connected. It does **not** reach Agent Supervisor App (that watches only *unassigned* ready tasks — a task reassigned to a specific named person, which this is, will never match its poll filter). If the target's Agent App isn't running when you reassign, nothing is lost — the task still carries the durable comment and status, and the existing comment notification (email/LINE) still fires — but there's no guaranteed fast turnaround, and it degrades to exactly today's async wait.
 
+**If nobody answers at all** (the target is on leave, no backup, nobody happens to check) — pm-system runs an hourly cron job (`runConsultEscalationCheck`, `src/lib/cron.ts`) that auto-reassigns any task whose *latest* comment is still an unanswered `[CONSULT]` older than 24h to a project admin, with an `[ESCALATED]` comment explaining why, using this exact same comment+reassign pattern (so it rides the same event/notification path). This caps at one hop — if the admin it escalated to also doesn't answer, it won't keep re-escalating hourly forever; a human needs to notice from there (existing overdue/workload reports already surface long-stuck tasks). This is a safety net, not a fast path — don't rely on it for anything that can't wait 24h.
+
 **Before relying on this in your org**: check that "PM"/"BA" are actually assigned as real per-project or global roles to real people (via the Roles admin UI in pm-system) — `list_members({ projectId, role: [...] })` returning empty doesn't necessarily mean something's broken, it may genuinely mean nobody's been assigned that role yet.
 
 ## What this skill does not do
